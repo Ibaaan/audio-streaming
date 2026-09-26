@@ -1,0 +1,48 @@
+# Local config / notes
+s3.json
+.vscode/
+linter.md
+
+# Binaries
+/audio-streaming
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Test and coverage output
+*.test
+*.out
+coverage.*
+*.coverprofile
+profile.cov
+
+# Go workspace
+go.work
+go.work.sum
+
+# Environment files
+.env
+.env.*
+
+# Editors / IDEs
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp / logs
+tmp/
+*.log
+
+CLAUDE.md
+learning/
+.claude/
+test_data/

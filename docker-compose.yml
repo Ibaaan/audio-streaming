@@ -1,0 +1,14 @@
+services:
+  seaweedfs:
+    image: chrislusf/seaweedfs:latest
+    container_name: audio-streaming-seaweedfs
+    ports:
+      - "8333:8333"   # S3 API
+      - "8888:8888"   # filer UI (optional)
+    volumes:
+      - seaweedfs-data:/data
+      - ./s3.json:/etc/seaweedfs/s3.json:ro
+    command: server -dir=/data -s3 -s3.config=/etc/seaweedfs/s3.json
+
+volumes:
+  seaweedfs-data:
