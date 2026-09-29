@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Audio Streaming</title>
+</head>
+<body>
+	<h1>Slipknot - Duality</h1>
+	<audio id="player" controls></audio>
+
+	<script>
+		async function loadSong() {
+			const res = await fetch("/song");
+			if (!res.ok) {
+				throw new Error("failed to get song url: " + res.status);
+			}
+			const url = await res.text();
+			document.getElementById("player").src = url;
+		}
+
+		loadSong().catch((err) => console.error(err));
+	</script>
+</body>
+</html>
