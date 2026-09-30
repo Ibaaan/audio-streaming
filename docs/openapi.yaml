@@ -1,0 +1,883 @@
+openapi: 3.1.0
+
+info:
+  title: Audio Streaming Service API
+  version: 1.0.0
+  description: |
+    API сервиса хранения и стриминга аудио. Обычный JSON поверх HTTP; принципы
+    заимствованы из Google API Improvement Proposals (https://google.aip.dev),
+    но без protobuf-специфики (`google.rpc.Status`, `Duration`, `FieldMask`,
+    `:custom`-методы).
+
+    **Общие соглашения**
+    - Ресурсы идентифицируются полем `name` — полным именем ресурса вида
+      `artists/{uuid}`, `albums/{uuid}`, `tracks/{uuid}` (AIP-122).
+      Поля `id` у ресурсов нет; UUID — последний сегмент имени.
+    - Имена полей — `lower_snake_case`, значения перечислений —
+      `lower_snake_case`; только `reason` ошибок — `UPPER_SNAKE_CASE`.
+    - Временные метки (`create_time`, `update_time`) — RFC 3339, UTC.
+    - Длительности (`duration_ms`) — целое число миллисекунд.
+    - Клиенту отдаются только объекты со статусом `ready`. Треки и изображения
+      в обработке или с ошибкой пайплайна в выдачу не попадают.
+    - Списки пагинируются токенами (AIP-158): запрос принимает `page_size`
+      и `page_token`, ответ содержит `next_page_token` (отсутствует на
+      последней странице) и `total_size`. `page_size` по умолчанию 20;
+      значения больше 100 приводятся к 100; `0` означает значение по
+      умолчанию; отрицательное значение — ошибка `400` с `reason` = `INVALID_PARAMETER`.
+      Токен непрозрачен и действителен только для того же запроса, который
+      его выдал.
+    - Ошибки — JSON `{error: {code, message, reason, metadata}}`; клиент
+      ориентируется на HTTP-статус и `reason`, а не на текст `message`.
+    - Вложенные сущности встраиваются параметром `include` (список через
+      запятую).
+
+servers:
+  - url: https://api.example.com
+    description: Production
+
+tags:
+  - name: Static
+    description: Веб-приложение
+  - name: Search
+  - name: Artists
+  - name: Albums
+  - name: Tracks
+
+paths:
+  /:
+    get:
+      tags: [Static]
+      summary: Веб-приложение
+      description: |
+        Отдаёт статический `index.html`. Роуты SPA (`/album/...`, `/artist/...`)
+        также направляются на `index.html`.
+      operationId: getIndex
+      security: []
+      responses:
+        '200':
+          description: HTML-страница приложения
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /v1/search:
+    get:
+      tags: [Search]
+      summary: Поиск по артистам, альбомам и трекам
+      description: |
+        Возвращает только группы, запрошенные
+        в `types`. `page_size` применяется к каждой группе отдельно, у каждой
+        группы свой `next_page_token`. `page_token` допустим только если в
+        `types` указан ровно один тип. Если ничего не найдено, возвращается
+        `200` с пустыми списками.
+      operationId: search
+      parameters:
+        - name: query
+          in: query
+          required: true
+          description: Строка поиска
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 200
+          example: radiohead
+        - name: types
+          in: query
+          required: false
+          description: Типы объектов через запятую. По умолчанию — все три.
+          style: form
+          explode: false
+          schema:
+            type: array
+            uniqueItems: true
+            items:
+              $ref: '#/components/schemas/SearchType'
+          example: [artist, track]
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+      responses:
+        '200':
+          description: Результаты поиска
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /v1/artists/{artist}:
+    get:
+      tags: [Artists]
+      summary: Артист
+      description: |
+        Поля `albums` и `tracks` присутствуют только если указаны в `include`.
+        Встраивается первая страница (20 элементов), продолжение загружается
+        через `/v1/artists/{artist}/albums` и `/v1/artists/{artist}/tracks`.
+      operationId: getArtist
+      parameters:
+        - $ref: '#/components/parameters/ArtistId'
+        - name: include
+          in: query
+          required: false
+          description: Связанные сущности для встраивания, через запятую
+          style: form
+          explode: false
+          schema:
+            type: array
+            uniqueItems: true
+            items:
+              type: string
+              enum: [albums, tracks]
+      responses:
+        '200':
+          description: Артист
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Artist'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /v1/artists/{artist}/tracks:
+    get:
+      tags: [Artists]
+      summary: Треки артиста
+      description: |
+        Все треки, где артист указан в `artists` в любой роли.
+        Сортировка: дата релиза альбома (новые первыми), затем `disc_number`,
+        `track_number`. У существующего артиста без треков возвращается пустой
+        список.
+      operationId: listArtistTracks
+      parameters:
+        - $ref: '#/components/parameters/ArtistId'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+      responses:
+        '200':
+          description: Страница треков
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListArtistTracksResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /v1/artists/{artist}/albums:
+    get:
+      tags: [Artists]
+      summary: Альбомы артиста
+      description: |
+        Сортировка: `release_date` по убыванию, альбомы без даты — в конце.
+      operationId: listArtistAlbums
+      parameters:
+        - $ref: '#/components/parameters/ArtistId'
+        - $ref: '#/components/parameters/PageSize'
+        - $ref: '#/components/parameters/PageToken'
+      responses:
+        '200':
+          description: Страница альбомов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListAlbumsResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /v1/albums/{album}:
+    get:
+      tags: [Albums]
+      summary: Альбом
+      description: |
+        При `include=tracks` встраивается весь треклист без пагинации,
+        отсортированный по `disc_number`, `track_number`.
+      operationId: getAlbum
+      parameters:
+        - $ref: '#/components/parameters/AlbumId'
+        - name: include
+          in: query
+          required: false
+          description: Связанные сущности для встраивания, через запятую
+          style: form
+          explode: false
+          schema:
+            type: array
+            uniqueItems: true
+            items:
+              type: string
+              enum: [tracks]
+      responses:
+        '200':
+          description: Альбом
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Album'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /v1/tracks/{track}:
+    get:
+      tags: [Tracks]
+      summary: Трек
+      operationId: getTrack
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+      responses:
+        '200':
+          description: Трек
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Track'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+  /v1/tracks/{track}/stream:
+    get:
+      tags: [Tracks]
+      summary: Ссылка на аудиопоток
+      description: |
+        Возвращает в JSON временную presigned-ссылку на объект в S3:
+        `media-public/audio/{shard}/{id}/v{pipeline_version}/{lossless.flac|320.mp3}`.
+
+        Фронтенд подставляет `url` в `<audio src>` и дальше работает
+        напрямую с S3. S3 отдаёт `Content-Type` (`audio/flac` или
+        `audio/mpeg`) и поддерживает `Range`-запросы (`206 Partial Content`),
+        поэтому перемотка работает без участия бэкенда. Когда ссылка
+        истекает (`expire_time`), клиент запрашивает новую и продолжает
+        с текущей позиции.
+
+        Если трек ещё обрабатывается пайплайном, возвращается `409`
+        с `reason` = `TRACK_NOT_READY`.
+      operationId: streamTrack
+      parameters:
+        - $ref: '#/components/parameters/TrackId'
+        - name: quality
+          in: query
+          required: false
+          description: |
+            `lossless` — FLAC 44,1 кГц / 16 бит, стерео.
+            `mp3` — MP3 320 kbps.
+          schema:
+            $ref: '#/components/schemas/Quality'
+            default: mp3
+      responses:
+        '200':
+          description: Ссылка на аудиофайл
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+              example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamUrl'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TrackNotReady'
+        '500':
+          $ref: '#/components/responses/Internal'
+
+components:
+  parameters:
+    ArtistId:
+      name: artist
+      in: path
+      required: true
+      description: UUID артиста (последний сегмент имени `artists/{artist}`)
+      schema:
+        type: string
+        format: uuid
+    AlbumId:
+      name: album
+      in: path
+      required: true
+      description: UUID альбома (последний сегмент имени `albums/{album}`)
+      schema:
+        type: string
+        format: uuid
+    TrackId:
+      name: track
+      in: path
+      required: true
+      description: UUID трека (последний сегмент имени `tracks/{track}`)
+      schema:
+        type: string
+        format: uuid
+    PageSize:
+      name: page_size
+      in: query
+      required: false
+      description: |
+        Максимальное число элементов на странице. По умолчанию 20, максимум
+        100 (большие значения приводятся к 100).
+      schema:
+        type: integer
+        minimum: 0
+        default: 20
+    PageToken:
+      name: page_token
+      in: query
+      required: false
+      description: |
+        `next_page_token` из предыдущего ответа. Остальные параметры запроса
+        должны совпадать с исходным запросом.
+      schema:
+        type: string
+
+  responses:
+    InvalidArgument:
+      description: Невалидный параметр запроса
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 400
+              message: "page_size must not be negative"
+              reason: INVALID_PARAMETER
+              metadata:
+                parameter: page_size
+    NotFound:
+      description: Объект не существует или не в статусе `ready`
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 404
+              message: "Album albums/4d5e... not found"
+              reason: RESOURCE_NOT_FOUND
+              metadata:
+                resource: albums/4d5e...
+    TrackNotReady:
+      description: Трек существует, но ещё обрабатывается пайплайном
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 409
+              message: "Track tracks/7f6e... is still processing"
+              reason: TRACK_NOT_READY
+              metadata:
+                track: tracks/7f6e...
+    Internal:
+      description: Внутренняя ошибка сервера
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: 500
+              message: "Internal server error"
+              reason: INTERNAL_ERROR
+
+  schemas:
+    # ---------- Общие ----------
+
+    Error:
+      type: object
+      description: |
+        Ошибка. Поле `reason` — стабильный машиночитаемый код, по которому
+        клиент принимает решения; `message` — отладочный текст на английском,
+        его формулировка может меняться.
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, reason]
+          properties:
+            code:
+              type: integer
+              description: Дублирует HTTP-статус ответа
+            message:
+              type: string
+            reason:
+              type: string
+              description: Причина в формате UPPER_SNAKE_CASE
+              enum:
+                - INVALID_PARAMETER
+                - RESOURCE_NOT_FOUND
+                - TRACK_NOT_READY
+                - INTERNAL_ERROR
+            metadata:
+              type: object
+              description: Динамические данные запроса, упомянутые в сообщении
+              additionalProperties:
+                type: string
+
+    Image:
+      type: object
+      description: Обложка. URL вариантов собираются из пути в `media-public/images`.
+      required: [id, width, height, variants]
+      properties:
+        id:
+          type: string
+          format: uuid
+        width:
+          type: [integer, 'null']
+          description: Ширина оригинала, px
+        height:
+          type: [integer, 'null']
+          description: Высота оригинала, px
+        variants:
+          type: object
+          required: ['300', '640', '1200']
+          properties:
+            '300':
+              type: string
+              format: uri
+            '640':
+              type: string
+              format: uri
+            '1200':
+              type: string
+              format: uri
+      example:
+        id: b1c2d3e4-0000-0000-0000-0000000000e7
+        width: 1400
+        height: 1400
+        variants:
+          '300': https://cdn.example.com/images/e7/b1c2d3e4-0000-0000-0000-0000000000e7/v1/300.jpg
+          '640': https://cdn.example.com/images/e7/b1c2d3e4-0000-0000-0000-0000000000e7/v1/640.jpg
+          '1200': https://cdn.example.com/images/e7/b1c2d3e4-0000-0000-0000-0000000000e7/v1/1200.jpg
+
+    NullableImage:
+      oneOf:
+        - $ref: '#/components/schemas/Image'
+        - type: 'null'
+
+    ReleaseDate:
+      type: [string, 'null']
+      description: |
+        Формат зависит от `release_date_precision`:
+        `YYYY` (year), `YYYY-MM` (month), `YYYY-MM-DD` (day).
+      pattern: '^\d{4}(-\d{2}(-\d{2})?)?$'
+      example: '1997-05-21'
+
+    ReleaseDatePrecision:
+      type: [string, 'null']
+      enum: [year, month, day, null]
+
+    AlbumType:
+      type: string
+      enum: [album, single, ep, compilation]
+
+    ArtistRole:
+      type: string
+      description: Роль артиста в треке
+      enum: [main, featured, remixer, producer, composer]
+
+    Quality:
+      type: string
+      enum: [lossless, mp3]
+
+    SearchType:
+      type: string
+      enum: [artist, album, track]
+
+    # ---------- Ссылки ----------
+
+    ArtistRef:
+      type: object
+      required: [name, display_name]
+      properties:
+        name:
+          type: string
+          description: Имя ресурса `artists/{uuid}`
+          pattern: '^artists/[0-9a-f-]{36}$'
+        display_name:
+          type: string
+      example:
+        name: artists/9a8b7c6d-0000-0000-0000-000000000001
+        display_name: Radiohead
+
+    TrackArtist:
+      description: Артист трека с ролью. Порядок в массиве — порядок на обложке.
+      allOf:
+        - $ref: '#/components/schemas/ArtistRef'
+        - type: object
+          required: [role]
+          properties:
+            role:
+              $ref: '#/components/schemas/ArtistRole'
+
+    AlbumRef:
+      type: object
+      required: [name, title, album_type, release_date, release_date_precision, cover]
+      properties:
+        name:
+          type: string
+          description: Имя ресурса `albums/{uuid}`
+          pattern: '^albums/[0-9a-f-]{36}$'
+        title:
+          type: string
+        album_type:
+          $ref: '#/components/schemas/AlbumType'
+        release_date:
+          $ref: '#/components/schemas/ReleaseDate'
+        release_date_precision:
+          $ref: '#/components/schemas/ReleaseDatePrecision'
+        cover:
+          $ref: '#/components/schemas/NullableImage'
+
+    AlbumSummary:
+      description: Альбом в списках
+      allOf:
+        - $ref: '#/components/schemas/AlbumRef'
+        - type: object
+          required: [artists, track_count]
+          properties:
+            artists:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistRef'
+            track_count:
+              type: integer
+              minimum: 0
+
+    ArtistSummary:
+      type: object
+      description: Артист в списках
+      required: [name, display_name, image]
+      properties:
+        name:
+          type: string
+          description: Имя ресурса `artists/{uuid}`
+          pattern: '^artists/[0-9a-f-]{36}$'
+        display_name:
+          type: string
+        image:
+          $ref: '#/components/schemas/NullableImage'
+
+    TrackSummary:
+      type: object
+      description: Трек в списках
+      required: [name, title, duration_ms, artists, album, disc_number, track_number]
+      properties:
+        name:
+          type: string
+          description: Имя ресурса `tracks/{uuid}`
+          pattern: '^tracks/[0-9a-f-]{36}$'
+        title:
+          type: string
+        duration_ms:
+          type: integer
+          minimum: 0
+          example: 213500
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackArtist'
+        album:
+          description: Основной альбом трека. `null`, если трек не входит ни в один альбом.
+          oneOf:
+            - $ref: '#/components/schemas/AlbumRef'
+            - type: 'null'
+        disc_number:
+          type: [integer, 'null']
+        track_number:
+          type: [integer, 'null']
+
+    ArtistTrackItem:
+      description: Трек в списке треков артиста
+      allOf:
+        - $ref: '#/components/schemas/TrackSummary'
+        - type: object
+          required: [artist_role]
+          properties:
+            artist_role:
+              $ref: '#/components/schemas/ArtistRole'
+
+    AlbumTrack:
+      type: object
+      description: Трек внутри альбома (без вложенного альбома)
+      required: [name, title, duration_ms, artists, disc_number, track_number]
+      properties:
+        name:
+          type: string
+          description: Имя ресурса `tracks/{uuid}`
+          pattern: '^tracks/[0-9a-f-]{36}$'
+        title:
+          type: string
+        duration_ms:
+          type: integer
+          minimum: 0
+          example: 213500
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackArtist'
+        disc_number:
+          type: integer
+          minimum: 1
+        track_number:
+          type: integer
+          minimum: 1
+
+    # ---------- Ответы List-методов (AIP-132, AIP-158) ----------
+
+    ListArtistsResponse:
+      type: object
+      required: [artists, total_size]
+      properties:
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistSummary'
+        next_page_token:
+          type: string
+          description: Отсутствует на последней странице
+        total_size:
+          type: integer
+          minimum: 0
+          description: Общее число элементов в коллекции
+
+    ListAlbumsResponse:
+      type: object
+      required: [albums, total_size]
+      properties:
+        albums:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlbumSummary'
+        next_page_token:
+          type: string
+          description: Отсутствует на последней странице
+        total_size:
+          type: integer
+          minimum: 0
+          description: Общее число элементов в коллекции
+
+    ListTracksResponse:
+      type: object
+      required: [tracks, total_size]
+      properties:
+        tracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackSummary'
+        next_page_token:
+          type: string
+          description: Отсутствует на последней странице
+        total_size:
+          type: integer
+          minimum: 0
+          description: Общее число элементов в коллекции
+
+    ListArtistTracksResponse:
+      type: object
+      required: [tracks, total_size]
+      properties:
+        tracks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtistTrackItem'
+        next_page_token:
+          type: string
+          description: Отсутствует на последней странице
+        total_size:
+          type: integer
+          minimum: 0
+          description: Общее число элементов в коллекции
+
+    # ---------- Ответы эндпоинтов ----------
+
+    SearchResponse:
+      type: object
+      description: Присутствуют только группы, запрошенные в `types`.
+      properties:
+        artists:
+          $ref: '#/components/schemas/ListArtistsResponse'
+        albums:
+          $ref: '#/components/schemas/ListAlbumsResponse'
+        tracks:
+          $ref: '#/components/schemas/ListTracksResponse'
+
+    Artist:
+      type: object
+      required: [name, display_name, image, stats, create_time, update_time]
+      properties:
+        name:
+          type: string
+          description: Имя ресурса `artists/{uuid}`
+          pattern: '^artists/[0-9a-f-]{36}$'
+        display_name:
+          type: string
+        image:
+          $ref: '#/components/schemas/NullableImage'
+        stats:
+          type: object
+          required: [album_count, track_count]
+          properties:
+            album_count:
+              type: integer
+              minimum: 0
+            track_count:
+              type: integer
+              minimum: 0
+        albums:
+          description: Только при `include=albums`
+          $ref: '#/components/schemas/ListAlbumsResponse'
+        tracks:
+          description: Только при `include=tracks`
+          $ref: '#/components/schemas/ListArtistTracksResponse'
+        create_time:
+          type: string
+          format: date-time
+        update_time:
+          type: string
+          format: date-time
+
+    Album:
+      allOf:
+        - $ref: '#/components/schemas/AlbumRef'
+        - type: object
+          required: [artists, track_count, disc_count, duration_ms, create_time, update_time]
+          properties:
+            artists:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtistRef'
+            track_count:
+              type: integer
+              minimum: 0
+            disc_count:
+              type: integer
+              minimum: 0
+            duration_ms:
+              type: integer
+              minimum: 0
+              description: Сумма длительностей треков
+            tracks:
+              description: Только при `include=tracks`. Сортировка по `disc_number`, `track_number`.
+              type: array
+              items:
+                $ref: '#/components/schemas/AlbumTrack'
+            create_time:
+              type: string
+              format: date-time
+            update_time:
+              type: string
+              format: date-time
+
+    TrackAlbum:
+      description: Альбом, в который входит трек, с позицией трека в нём
+      allOf:
+        - $ref: '#/components/schemas/AlbumRef'
+        - type: object
+          required: [disc_number, track_number]
+          properties:
+            disc_number:
+              type: integer
+              minimum: 1
+            track_number:
+              type: integer
+              minimum: 1
+
+    StreamUrl:
+      type: object
+      required: [url, quality, content_type, expire_time]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Presigned URL аудиофайла в S3
+          example: https://s3.example.com/media-public/audio/e7/7f6e...e7/v1/320.mp3?X-Amz-Expires=3600&X-Amz-Signature=...
+        quality:
+          $ref: '#/components/schemas/Quality'
+        content_type:
+          type: string
+          description: MIME-тип файла
+          enum: [audio/flac, audio/mpeg]
+        expire_time:
+          type: string
+          format: date-time
+          description: Момент, после которого ссылка перестаёт работать (срок жизни — 1 час)
+
+    TrackAudio:
+      type: object
+      required: [qualities, loudness_lufs, true_peak_db]
+      properties:
+        qualities:
+          type: array
+          description: Доступные значения `quality` для `/stream`
+          items:
+            $ref: '#/components/schemas/Quality'
+        loudness_lufs:
+          type: number
+          description: |
+            Интегральная громкость. Клиент может нормализовать громкость:
+            gain = target_lufs − loudness_lufs, с ограничением по `true_peak_db`.
+          example: -9.4
+        true_peak_db:
+          type: number
+          description: True peak после обработки, dBTP
+          maximum: 0
+          example: -1.0
+
+    Track:
+      type: object
+      required: [name, title, duration_ms, artists, albums, audio, create_time, update_time]
+      properties:
+        name:
+          type: string
+          description: Имя ресурса `tracks/{uuid}`
+          pattern: '^tracks/[0-9a-f-]{36}$'
+        title:
+          type: string
+        duration_ms:
+          type: integer
+          minimum: 0
+          example: 213500
+        artists:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrackArtist'
+        albums:
+          type: array
+          description: |
+            Трек может входить в несколько альбомов (оригинальный альбом, сборник).
+            Пустой массив — трек без альбома.
+          items:
+            $ref: '#/components/schemas/TrackAlbum'
+        audio:
+          $ref: '#/components/schemas/TrackAudio'
+        create_time:
+          type: string
+          format: date-time
+        update_time:
+          type: string
+          format: date-time
