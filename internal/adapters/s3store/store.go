@@ -10,12 +10,12 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-type MinioClient struct {
+type Store struct {
 	mc     *minio.Client
 	bucket string
 }
 
-func NewClient(ctx context.Context, cfg Config) (*MinioClient, error) {
+func New(ctx context.Context, cfg Config) (*Store, error) {
 	mc, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds: credentials.NewStaticV4(cfg.AccessKey,
 			cfg.SecretKey, ""),
@@ -25,14 +25,14 @@ func NewClient(ctx context.Context, cfg Config) (*MinioClient, error) {
 		return nil, fmt.Errorf("creating minio client: %w", err)
 	}
 
-	c := &MinioClient{mc: mc, bucket: cfg.Bucket}
+	c := &Store{mc: mc, bucket: cfg.Bucket}
 	if err := c.ensureBucket(ctx); err != nil {
 		return nil, err
 	}
 	return c, nil
 }
 
-func (c *MinioClient) ensureBucket(ctx context.Context) error {
+func (c *Store) ensureBucket(ctx context.Context) error {
 	exists, err := c.mc.BucketExists(ctx, c.bucket)
 	if err != nil {
 		return fmt.Errorf("checking bucket %q: %w", c.bucket, err)
@@ -47,7 +47,7 @@ func (c *MinioClient) ensureBucket(ctx context.Context) error {
 	return nil
 }
 
-func (c *MinioClient) Upload(
+func (c *Store) Upload(
 	ctx context.Context, key string, r io.Reader,
 	size int64, contentType string,
 ) (int64, error) {
@@ -61,7 +61,7 @@ func (c *MinioClient) Upload(
 	return info.Size, nil
 }
 
-func (c *MinioClient) List(
+func (c *Store) List(
 	ctx context.Context, prefix string,
 ) ([]string, error) {
 	var keys []string
@@ -75,7 +75,7 @@ func (c *MinioClient) List(
 	return keys, nil
 }
 
-func (c *MinioClient) Delete(ctx context.Context, key string) error {
+func (c *Store) Delete(ctx context.Context, key string) error {
 	err := c.mc.RemoveObject(ctx, c.bucket, key, minio.RemoveObjectOptions{})
 	if err != nil {
 		return fmt.Errorf("deleting %q: %w", key, err)
@@ -83,7 +83,7 @@ func (c *MinioClient) Delete(ctx context.Context, key string) error {
 	return nil
 }
 
-func (c *MinioClient) PresignedGetURL(
+func (c *Store) PresignedGetURL(
 	ctx context.Context, key string, expiry time.Duration,
 ) (string, error) {
 	u, err := c.mc.PresignedGetObject(ctx, c.bucket, key, expiry, nil)

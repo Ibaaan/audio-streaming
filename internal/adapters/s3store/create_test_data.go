@@ -14,7 +14,7 @@ import (
 )
 
 type TestVolume struct {
-	Client *MinioClient
+	Client *Store
 	Keys   []string
 }
 
@@ -22,7 +22,7 @@ func CreateTestVolume(
 	ctx context.Context, cfg Config, dir string,
 ) (*TestVolume, error) {
 	cfg.Bucket = fmt.Sprintf("test-%d", time.Now().UnixNano())
-	c, err := NewClient(ctx, cfg)
+	c, err := New(ctx, cfg)
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func CreateTestVolume(
 }
 
 func uploadFile(
-	ctx context.Context, c *MinioClient, key, path string,
+	ctx context.Context, c *Store, key, path string,
 ) error {
 	f, err := os.Open(path)
 	if err != nil {

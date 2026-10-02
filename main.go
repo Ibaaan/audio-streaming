@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"time"
 
-	"audio-streaming/storage"
+	s3store "audio-streaming/internal/adapters/s3store"
 )
 
 func main() {
@@ -17,8 +17,8 @@ func main() {
 
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
 
-	testVolume, err := storage.CreateTestVolume(ctx,
-		storage.ConfigFromEnv(), "test_data")
+	testVolume, err := s3store.CreateTestVolume(ctx,
+		s3store.ConfigFromEnv(), "test_data")
 	if err != nil {
 		slog.Error("creating test volume", "error", err)
 		os.Exit(1)
@@ -64,7 +64,13 @@ func main() {
 	}
 }
 
-func listTracks(client storage.StorageClient) http.HandlerFunc {
+type Lister interface {
+	List(
+		ctx context.Context, prefix string,
+	) ([]string, error)
+}
+
+func listTracks(client Lister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		keys, err := client.List(r.Context(), r.URL.Query().Get("prefix"))
 		if err != nil {
@@ -83,7 +89,12 @@ func listTracks(client storage.StorageClient) http.HandlerFunc {
 	}
 }
 
-func getUrl(client storage.StorageClient, key string) http.HandlerFunc {
+type URLer interface {
+	PresignedGetURL(ctx context.Context, key string,
+		expiry time.Duration) (string, error)
+}
+
+func getUrl(client URLer, key string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		url, err := client.PresignedGetURL(r.Context(), key, time.Minute)

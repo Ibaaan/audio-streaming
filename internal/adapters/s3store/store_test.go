@@ -16,7 +16,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTestClient(t *testing.T) *MinioClient {
+func newTestClient(t *testing.T) *Store {
 	t.Helper()
 
 	cfg := ConfigFromEnv()
@@ -26,7 +26,7 @@ func newTestClient(t *testing.T) *MinioClient {
 	ctx, cancel := context.WithTimeout(context.Background(),
 		10*time.Second)
 	defer cancel()
-	c, err := NewClient(ctx, cfg)
+	c, err := New(ctx, cfg)
 	require.NoError(t, err, "NewClient")
 
 	t.Cleanup(func() {
@@ -46,7 +46,7 @@ func newTestClient(t *testing.T) *MinioClient {
 	return c
 }
 
-func upload(t *testing.T, c *MinioClient, key, body string) {
+func upload(t *testing.T, c *Store, key, body string) {
 	t.Helper()
 	n, err := c.Upload(context.Background(), key, strings.NewReader(body),
 		int64(len(body)), "text/plain")
