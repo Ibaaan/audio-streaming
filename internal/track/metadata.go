@@ -11,10 +11,12 @@ type Record struct {
 }
 
 type SourceInfo struct {
-	SampleRate   int
-	BitDepth     int
-	Channels     int
-	Layout       string
+	Codec string
+	Lossless   bool
+	SampleRate int
+	BitDepth int
+	Channels int
+	Layout   string
 	TotalSamples int64
 }
 
@@ -34,14 +36,14 @@ type Cover struct {
 }
 
 type EncodeOptions struct {
-	CompressionLevel  int
-	TotalFrames       int64
-	SeekPointInterval int64
+	CompressionLevel int
+	SeekIntervalSec  int
 }
 
 type Expectations struct {
 	TotalFrames int64
 	SeekPoints  int
+	MD5 [16]byte
 }
 
 type Report struct {

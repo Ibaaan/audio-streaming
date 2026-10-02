@@ -1,26 +1,70 @@
 package pipeline
 
-import "audio-streaming/internal/track"
+import (
+	"fmt"
+
+	"audio-streaming/internal/track"
+)
+
+const (
+	targetRate     = 44100
+	targetBitDepth = 16
+	targetChannels = 2
+)
+
+// Mix says how source channels become stereo.
+type Mix int
+
+const (
+	MixNone    Mix = iota // already stereo
+	MixDupMono            // mono copied to both channels
+	MixDownmix            // multichannel folded down per ITU-R BS.775
+)
 
 type Plan struct {
-	Passthrough           bool
-	Downmix               bool
-	Resample              bool
-	SourceRate            int
-	Dither                bool
-	SeekpointsDurationSec int
+	Passthrough bool
+	Mix         Mix
+	Resample    bool
+	OnGrid          bool
+	SeekIntervalSec int
 }
 
-func MakePlan(src track.SourceInfo) Plan {
-	p := Plan{
-		SourceRate: src.SampleRate,
-		Downmix:  src.Channels > 2,
-		Resample: src.SampleRate != 44100,
+func MakePlan(src track.SourceInfo) (Plan, error) {
+	if src.SampleRate <= 0 {
+		return Plan{}, fmt.Errorf("plan: invalid sample rate %d",
+			src.SampleRate)
 	}
-	p.Dither = p.Downmix || p.Resample || src.BitDepth > 16
-	p.Passthrough = !p.Dither
-	p.SeekpointsDurationSec = seekpointCount(src.TotalSamples, src.SampleRate)
-	return p
+
+	mix, err := func(channels int) (Mix, error) {
+		switch {
+		case channels == 1:
+			return MixDupMono, nil
+		case channels == targetChannels:
+			return MixNone, nil
+		case channels > targetChannels:
+			return MixDownmix, nil
+		default:
+			return 0, fmt.Errorf("plan: invalid channel count %d", channels)
+		}
+	}(src.Channels)
+
+	if err != nil {
+		return Plan{}, err
+	}
+
+	p := Plan{
+		Mix:      mix,
+		Resample: src.SampleRate != targetRate,
+	}
+	p.OnGrid = src.Lossless &&
+		src.BitDepth > 0 && src.BitDepth <= targetBitDepth &&
+		!p.Resample && p.Mix != MixDownmix
+	p.Passthrough = src.Lossless &&
+		src.BitDepth == targetBitDepth &&
+		src.Channels == targetChannels &&
+		!p.Resample
+	p.SeekIntervalSec = seekInterval(src.TotalSamples, src.SampleRate)
+	return p, nil
 }
 
 const (
@@ -28,7 +72,7 @@ const (
 	maxSeekpoints          = 100
 )
 
-func seekpointCount(totalSamples int64, sampleRate int) int {
+func seekInterval(totalSamples int64, sampleRate int) int {
 	if totalSamples <= 0 || sampleRate <= 0 {
 		return 0
 	}
