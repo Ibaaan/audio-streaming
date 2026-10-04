@@ -22,9 +22,9 @@ const (
 )
 
 type Plan struct {
-	Passthrough bool
-	Mix         Mix
-	Resample    bool
+	Passthrough     bool
+	Mix             Mix
+	Resample        bool
 	OnGrid          bool
 	SeekIntervalSec int
 }

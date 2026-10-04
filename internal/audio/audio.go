@@ -2,7 +2,10 @@
 // packages. It has no logic and no dependencies.
 package audio
 
-import "context"
+import (
+	"context"
+	"io"
+)
 
 // Block is a run of interleaved float samples, nominally in [-1, 1).
 type Block struct {
@@ -26,6 +29,16 @@ type BlockReader interface {
 	ReadBlock(ctx context.Context) (Block, error)
 	// Close releases the underlying source (file, process).
 	Close() error
+}
+
+type SimpleBlockReader struct{}
+
+func (r *SimpleBlockReader) ReadBlock(ctx context.Context) (Block, error) {
+	return Block{}, io.EOF
+}
+
+func (r *SimpleBlockReader) Close() error {
+	return nil
 }
 
 // DecodeSpec says how a decoder shapes the audio. The output is always
