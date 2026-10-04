@@ -4,27 +4,17 @@ import (
 	"context"
 	"io"
 
+	"audio-streaming/internal/audio"
 	"audio-streaming/internal/track"
 )
-
-// DecodeSpec says how Decoder.Open shapes the audio. The output is
-// always interleaved stereo float.
-type DecodeSpec struct {
-	// Mix folds the source channels to stereo (2×N, see dsp.MixMatrix).
-	// nil means the source is already stereo.
-	Mix [][]float64
-	// SampleRate is the output rate. Audio is resampled only when it
-	// differs from the source rate.
-	SampleRate int
-}
 
 // Decoder reads a source file.
 type Decoder interface {
 	// Probe describes the first audio stream without decoding it.
 	Probe(ctx context.Context, path string) (track.SourceInfo, error)
 	// Open streams the audio as float blocks shaped by spec.
-	Open(ctx context.Context, path string, spec DecodeSpec) (
-		BlockReader, error)
+	Open(ctx context.Context, path string, spec audio.DecodeSpec) (
+		audio.BlockReader, error)
 	// OpenPCM16 streams the audio unchanged as interleaved 16-bit
 	// little-endian PCM. Only for sources that are already 16-bit.
 	OpenPCM16(ctx context.Context, path string) (io.ReadCloser, error)
