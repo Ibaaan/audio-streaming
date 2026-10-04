@@ -7,10 +7,27 @@ import (
 	"audio-streaming/internal/track"
 )
 
-// Decoder opens a source file and streams it as float blocks.
+// DecodeSpec says how Decoder.Open shapes the audio. The output is
+// always interleaved stereo float.
+type DecodeSpec struct {
+	// Mix folds the source channels to stereo (2×N, see dsp.MixMatrix).
+	// nil means the source is already stereo.
+	Mix [][]float64
+	// SampleRate is the output rate. Audio is resampled only when it
+	// differs from the source rate.
+	SampleRate int
+}
+
+// Decoder reads a source file.
 type Decoder interface {
-	Open(ctx context.Context, path string) (track.SourceInfo,
+	// Probe describes the first audio stream without decoding it.
+	Probe(ctx context.Context, path string) (track.SourceInfo, error)
+	// Open streams the audio as float blocks shaped by spec.
+	Open(ctx context.Context, path string, spec DecodeSpec) (
 		BlockReader, error)
+	// OpenPCM16 streams the audio unchanged as interleaved 16-bit
+	// little-endian PCM. Only for sources that are already 16-bit.
+	OpenPCM16(ctx context.Context, path string) (io.ReadCloser, error)
 }
 
 // MetaExtractor reads tags and cover art before the audio is transformed.
@@ -18,20 +35,17 @@ type MetaExtractor interface {
 	Extract(ctx context.Context, path string) (track.Tags, *track.Cover, error)
 }
 
-// ResamplerFactory builds a fresh resampler for each track.
-type ResamplerFactory interface {
-	New(fromRate, toRate, channels int) (Stage, error)
-}
-
-// Encoder writes the processed stream as FLAC.
+// Encoder writes FLAC to dstPath. pcm is interleaved stereo 16-bit
+// little-endian at 44.1 kHz. dstPath must be a file: FLAC rewrites its
+// header once the stream ends.
 type Encoder interface {
-	Encode(ctx context.Context, src BlockReader, opt track.EncodeOptions,
-		dst io.Writer) error
+	Encode(ctx context.Context, pcm io.Reader, opt track.EncodeOptions,
+		dstPath string) error
 }
 
 // Verifier independently checks the encoded file.
 type Verifier interface {
-	Verify(f io.ReadSeeker, exp track.Expectations) (track.Report, error)
+	Verify(path string, exp track.Expectations) (track.Report, error)
 }
 
 // Uploader stores audio and cover blobs. Satisfied by *s3store.Store.

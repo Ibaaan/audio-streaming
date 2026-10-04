@@ -3,13 +3,12 @@ package pipeline
 import "errors"
 
 type Deps struct {
-	Decoder    Decoder
-	Meta       MetaExtractor
-	Resamplers ResamplerFactory
-	Encoder    Encoder
-	Verifier   Verifier
-	Blobs      Uploader
-	Records    RecordSaver
+	Decoder  Decoder
+	Meta     MetaExtractor
+	Encoder  Encoder
+	Verifier Verifier
+	Blobs    Uploader
+	Records  RecordSaver
 }
 
 type Pipeline struct {
@@ -20,7 +19,6 @@ type Pipeline struct {
 func New(d Deps, tmpDir string) (*Pipeline, error) {
 	if d.Decoder == nil ||
 		d.Meta == nil ||
-		d.Resamplers == nil ||
 		d.Encoder == nil ||
 		d.Verifier == nil ||
 		d.Blobs == nil ||
