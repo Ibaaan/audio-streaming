@@ -1,5 +1,6 @@
 # Local config / notes
 s3.json
+postgres.env
 .vscode/
 linter.md
 
