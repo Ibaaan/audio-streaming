@@ -15,17 +15,17 @@ type Store struct {
 	bucket string
 }
 
-func New(ctx context.Context, cfg Config) (*Store, error) {
-	mc, err := minio.New(cfg.Endpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(cfg.AccessKey,
-			cfg.SecretKey, ""),
-		Secure: cfg.UseSSL,
+func New(ctx context.Context, cfg config) (*Store, error) {
+	mc, err := minio.New(cfg.endpoint, &minio.Options{
+		Creds: credentials.NewStaticV4(cfg.accessKey,
+			cfg.secretKey, ""),
+		Secure: cfg.useSSL,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("creating minio client: %w", err)
 	}
 
-	c := &Store{mc: mc, bucket: cfg.Bucket}
+	c := &Store{mc: mc, bucket: cfg.bucket}
 	if err := c.ensureBucket(ctx); err != nil {
 		return nil, err
 	}

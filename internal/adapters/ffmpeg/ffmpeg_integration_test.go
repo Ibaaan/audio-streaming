@@ -110,6 +110,14 @@ func TestProbeMP3(t *testing.T) {
 	assert.InDelta(t, 88200, info.TotalSamples, 3000)
 }
 
+func TestProbeWithTheRealFile(t *testing.T) {
+	path := "/home/lwnds/projects/go/audio-streaming/test_data/Slipknot - Duality.flac"
+	info, err := newTestFFmpeg().Probe(context.Background(), path)
+
+	require.NoError(t, err)
+	t.Logf("\nprobe result: %+v", info)
+}
+
 // The float path must not change 16-bit samples: ffmpeg's int→float
 // scale has to match dsp.Quantizer's, and aresample must be a no-op at
 // equal rates. Plan.OnGrid relies on both.

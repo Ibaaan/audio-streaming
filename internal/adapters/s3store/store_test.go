@@ -21,7 +21,7 @@ func newTestClient(t *testing.T) *Store {
 
 	cfg := ConfigFromEnv()
 
-	cfg.Bucket = fmt.Sprintf("it-%d", time.Now().UnixNano())
+	cfg.bucket = fmt.Sprintf("it-%d", time.Now().UnixNano())
 
 	ctx, cancel := context.WithTimeout(context.Background(),
 		10*time.Second)

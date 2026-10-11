@@ -19,9 +19,9 @@ type TestVolume struct {
 }
 
 func CreateTestVolume(
-	ctx context.Context, cfg Config, dir string,
+	ctx context.Context, cfg config, dir string,
 ) (*TestVolume, error) {
-	cfg.Bucket = fmt.Sprintf("test-%d", time.Now().UnixNano())
+	cfg.bucket = fmt.Sprintf("test-%d", time.Now().UnixNano())
 	c, err := New(ctx, cfg)
 	if err != nil {
 		return nil, err
