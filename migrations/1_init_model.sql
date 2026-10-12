@@ -10,12 +10,12 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE images (
   id               uuid        PRIMARY KEY,
   storage_path     text        NOT NULL UNIQUE,
-  original_format  text        NOT NULL CHECK (original_format IN ('jpeg','png','webp','gif','avif')),
+  original_format  text        NOT NULL,
   width            int         CHECK (width  > 0),
   height           int         CHECK (height > 0),
   status           text        NOT NULL CHECK (status IN ('pending','processing','ready','failed')),
-  created_at       timestamptz NOT NULL,
-  updated_at       timestamptz NOT NULL
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
 );
 
 -- ---------------------------------------------------------------------------
@@ -24,8 +24,8 @@ CREATE TABLE artists (
   name           text        NOT NULL CHECK (btrim(name) <> ''),
   sort_name      text,                                   -- "Beatles, The"
   image_id       uuid        REFERENCES images(id) ON DELETE SET NULL,
-  created_at     timestamptz NOT NULL,
-  updated_at     timestamptz NOT NULL
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  updated_at     timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX artists_name_lower ON artists (lower(name));
 
@@ -33,11 +33,11 @@ CREATE INDEX artists_name_lower ON artists (lower(name));
 CREATE TABLE albums (
   id                      uuid        PRIMARY KEY,
   title                   text        NOT NULL CHECK (btrim(title) <> ''),
-  album_type              text        NOT NULL CHECK (album_type IN ('album','single','ep','compilation','live','soundtrack','other')),
+  album_type              text        NOT NULL,
   release_year            smallint    CHECK (release_year BETWEEN 1000 AND 9999),
   cover_image_id          uuid        REFERENCES images(id) ON DELETE SET NULL,
-  created_at              timestamptz NOT NULL,
-  updated_at              timestamptz NOT NULL
+  created_at              timestamptz NOT NULL DEFAULT now(),
+  updated_at              timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX albums_release_year ON albums (release_year);
 
@@ -57,8 +57,8 @@ CREATE TABLE tracks (
   title        text        NOT NULL CHECK (btrim(title) <> ''),
   duration_ms  int         NOT NULL CHECK (duration_ms > 0),
   status       text        NOT NULL CHECK (status IN ('pending','ready','hidden','failed')),
-  created_at   timestamptz NOT NULL,
-  updated_at   timestamptz NOT NULL
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX tracks_status     ON tracks (status) WHERE status <> 'ready'; 
 
