@@ -1,9 +1,8 @@
 package pipeline
 
 import (
+	"audio-streaming/internal/audio"
 	"fmt"
-
-	"audio-streaming/internal/track"
 )
 
 const (
@@ -29,7 +28,7 @@ type Plan struct {
 	SeekIntervalSec int
 }
 
-func MakePlan(src track.SourceInfo) (Plan, error) {
+func MakePlan(src audio.SourceInfo) (Plan, error) {
 	if src.SampleRate <= 0 {
 		return Plan{}, fmt.Errorf("plan: invalid sample rate %d",
 			src.SampleRate)

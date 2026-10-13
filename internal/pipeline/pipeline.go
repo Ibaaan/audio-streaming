@@ -3,7 +3,6 @@ package pipeline
 import (
 	"audio-streaming/internal/audio"
 	"audio-streaming/internal/dsp"
-	"audio-streaming/internal/track"
 	"context"
 	"errors"
 )
@@ -60,7 +59,7 @@ func (p *Pipeline) Run(ctx context.Context, path string) (
 	return blockReader, nil
 }
 
-func decodeSpec(info track.SourceInfo, plan Plan) (audio.DecodeSpec, error) {
+func decodeSpec(info audio.SourceInfo, plan Plan) (audio.DecodeSpec, error) {
 	spec := audio.DecodeSpec{SampleRate: targetRate}
 
 	if plan.Mix != MixNone {

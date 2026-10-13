@@ -1,12 +1,11 @@
 package ffmpeg
 
 import (
+	"audio-streaming/internal/audio"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"audio-streaming/internal/track"
 )
 
 func TestParseTags(t *testing.T) {
@@ -23,7 +22,7 @@ func TestParseTags(t *testing.T) {
 
 	got := parseTags(p)
 
-	assert.Equal(t, track.Tags{
+	assert.Equal(t, audio.Tags{
 		Title:       "Song",
 		Artist:      "Singer",
 		AlbumArtist: "Band",

@@ -5,13 +5,12 @@ import (
 	"io"
 
 	"audio-streaming/internal/audio"
-	"audio-streaming/internal/track"
 )
 
 // Decoder reads a source file.
 type Decoder interface {
 	// Probe describes the first audio stream without decoding it.
-	Probe(ctx context.Context, path string) (track.SourceInfo, error)
+	Probe(ctx context.Context, path string) (audio.SourceInfo, error)
 	// Open streams the audio as float blocks shaped by spec.
 	Open(ctx context.Context, path string, spec audio.DecodeSpec) (
 		audio.BlockReader, error)
@@ -22,20 +21,20 @@ type Decoder interface {
 
 // MetaExtractor reads tags and cover art before the audio is transformed.
 type MetaExtractor interface {
-	Extract(ctx context.Context, path string) (track.Tags, *track.Cover, error)
+	Extract(ctx context.Context, path string) (audio.Tags, *audio.Cover, error)
 }
 
 // Encoder writes FLAC to dstPath. pcm is interleaved stereo 16-bit
 // little-endian at 44.1 kHz. dstPath must be a file: FLAC rewrites its
 // header once the stream ends.
 type Encoder interface {
-	Encode(ctx context.Context, pcm io.Reader, opt track.EncodeOptions,
+	Encode(ctx context.Context, pcm io.Reader, opt audio.EncodeOptions,
 		dstPath string) error
 }
 
 // Verifier independently checks the encoded file.
 type Verifier interface {
-	Verify(path string, exp track.Expectations) (track.Report, error)
+	Verify(path string, exp audio.Expectations) (audio.Report, error)
 }
 
 // Uploader stores audio and cover blobs. Satisfied by *s3store.Store.
@@ -46,5 +45,5 @@ type Uploader interface {
 
 // RecordSaver persists the track record linking metadata and blob keys.
 type RecordSaver interface {
-	Save(ctx context.Context, rec track.Record) error
+	Save(ctx context.Context, rec audio.Record) error
 }

@@ -1,14 +1,13 @@
 package ffmpeg
 
 import (
+	"audio-streaming/internal/audio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
-
-	"audio-streaming/internal/track"
 )
 
 // maxCover is the largest embedded picture Extract accepts.
@@ -25,15 +24,15 @@ var coverMIME = map[string]string{
 // Extract reads the tags and the embedded cover, if any. A cover in a
 // format we don't recognise is skipped.
 func (f *FFmpeg) Extract(ctx context.Context, path string) (
-	track.Tags, *track.Cover, error,
+	audio.Tags, *audio.Cover, error,
 ) {
 	p, err := f.probe(ctx, path)
 	if err != nil {
-		return track.Tags{}, nil, err
+		return audio.Tags{}, nil, err
 	}
 	cover, err := f.cover(ctx, path, p)
 	if err != nil {
-		return track.Tags{}, nil, err
+		return audio.Tags{}, nil, err
 	}
 	return parseTags(p), cover, nil
 }
@@ -41,7 +40,7 @@ func (f *FFmpeg) Extract(ctx context.Context, path string) (
 // parseTags merges container and audio stream tags (Ogg keeps them on
 // the stream, most other formats on the container). Keys are matched
 // case-insensitively; anything not mapped to a field lands in Extra.
-func parseTags(p probeOutput) track.Tags {
+func parseTags(p probeOutput) audio.Tags {
 	all := map[string]string{}
 	add := func(tags map[string]string) {
 		for k, v := range tags {
@@ -66,7 +65,7 @@ func parseTags(p probeOutput) track.Tags {
 		}
 		return v
 	}
-	t := track.Tags{
+	t := audio.Tags{
 		Title:       take("title"),
 		Artist:      take("artist"),
 		Album:       take("album"),
@@ -106,7 +105,7 @@ func coverStream(p probeOutput) (probeStream, bool) {
 
 func (f *FFmpeg) cover(
 	ctx context.Context, path string, p probeOutput,
-) (*track.Cover, error) {
+) (*audio.Cover, error) {
 	s, ok := coverStream(p)
 	if !ok {
 		return nil, nil
@@ -132,5 +131,5 @@ func (f *FFmpeg) cover(
 	if len(data) > maxCover {
 		return nil, errors.New("cover is larger than 16 MiB")
 	}
-	return &track.Cover{MIMEType: mime, Data: data}, nil
+	return &audio.Cover{MIMEType: mime, Data: data}, nil
 }

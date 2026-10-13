@@ -1,13 +1,12 @@
 package pipeline
 
 import (
+	"audio-streaming/internal/audio"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"audio-streaming/internal/track"
 )
 
 var seekTests = []struct {
@@ -40,8 +39,8 @@ func TestSeekInterval(t *testing.T) {
 }
 
 func source(codec string, lossless bool, rate, bits, ch int,
-) track.SourceInfo {
-	return track.SourceInfo{
+) audio.SourceInfo {
+	return audio.SourceInfo{
 		Codec:        codec,
 		Lossless:     lossless,
 		SampleRate:   rate,
@@ -53,7 +52,7 @@ func source(codec string, lossless bool, rate, bits, ch int,
 
 var planTests = []struct {
 	name string
-	src  track.SourceInfo
+	src  audio.SourceInfo
 	want Plan
 }{
 	{"flac 16/44.1 stereo", source("flac", true, 44100, 16, 2),

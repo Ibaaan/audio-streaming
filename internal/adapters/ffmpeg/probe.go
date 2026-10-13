@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"audio-streaming/internal/audio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -10,8 +11,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-
-	"audio-streaming/internal/track"
 )
 
 // probeOutput is the part of `ffprobe -print_format json` we use.
@@ -51,18 +50,16 @@ var losslessCodecs = map[string]bool{
 
 // Probe describes the first audio stream of path.
 func (f *FFmpeg) Probe(ctx context.Context, path string) (
-	track.SourceInfo, error,
+	audio.SourceInfo, error,
 ) {
 	p, err := f.probe(ctx, path)
 	if err != nil {
-		return track.SourceInfo{}, err
+		return audio.SourceInfo{}, err
 	}
 	return sourceInfo(p)
 }
 
-func (f *FFmpeg) probe(ctx context.Context, path string) (
-	probeOutput, error,
-) {
+func (f *FFmpeg) probe(ctx context.Context, path string) (probeOutput, error) {
 	args := []string{
 		"-v", "error", "-protocol_whitelist", "file",
 		"-print_format", "json", "-show_format", "-show_streams",
@@ -97,18 +94,18 @@ func (p probeOutput) audio() (probeStream, bool) {
 	return probeStream{}, false
 }
 
-func sourceInfo(p probeOutput) (track.SourceInfo, error) {
+func sourceInfo(p probeOutput) (audio.SourceInfo, error) {
 	s, ok := p.audio()
 	if !ok {
-		return track.SourceInfo{}, errors.New("ffprobe: no audio stream")
+		return audio.SourceInfo{}, errors.New("ffprobe: no audio stream")
 	}
 	rate, err := strconv.Atoi(s.SampleRate)
 	if err != nil {
-		return track.SourceInfo{}, fmt.Errorf("ffprobe: sample rate %q: %w",
+		return audio.SourceInfo{}, fmt.Errorf("ffprobe: sample rate %q: %w",
 			s.SampleRate, err)
 	}
 
-	info := track.SourceInfo{
+	info := audio.SourceInfo{
 		Codec:        s.CodecName,
 		Lossless:     isLossless(s.CodecName),
 		SampleRate:   rate,

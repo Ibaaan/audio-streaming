@@ -1,4 +1,4 @@
-package track
+package audio
 
 import "time"
 
@@ -11,12 +11,12 @@ type Record struct {
 }
 
 type SourceInfo struct {
-	Codec string
-	Lossless   bool
-	SampleRate int
-	BitDepth int
-	Channels int
-	Layout   string
+	Codec        string
+	Lossless     bool
+	SampleRate   int
+	BitDepth     int
+	Channels     int
+	Layout       string
 	TotalSamples int64
 }
 
@@ -43,7 +43,7 @@ type EncodeOptions struct {
 type Expectations struct {
 	TotalFrames int64
 	SeekPoints  int
-	MD5 [16]byte
+	MD5         [16]byte
 }
 
 type Report struct {
