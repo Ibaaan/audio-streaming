@@ -2,10 +2,37 @@ package repository
 
 import (
 	"context"
+	_ "embed"
 	"net/url"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type config struct {
+	user   string
+	pass   string
+	host   string
+	port   string
+	dbname string
+}
+
+func ConfigFromEnv() config {
+	return config{
+		user:   getEnv("POSTGRES_USER", "audio"),
+		pass:   getEnv("POSTGRES_PASSWORD", "audio"),
+		host:   getEnv("POSTGRES_HOST", "localhost"),
+		port:   getEnv("POSTGRES_PORT", "5432"),
+		dbname: getEnv("POSTGRES_DB", "audio"),
+	}
+}
+
+func getEnv(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
 
 func Open(ctx context.Context, cfg config) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, generateConnStringPGSQL(cfg))
@@ -13,7 +40,6 @@ func Open(ctx context.Context, cfg config) (*pgxpool.Pool, error) {
 		return nil, err
 	}
 	if err := pool.Ping(ctx); err != nil {
-		
 		pool.Close()
 		return nil, err
 	}
