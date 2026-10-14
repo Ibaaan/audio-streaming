@@ -41,12 +41,12 @@ func TestSeekInterval(t *testing.T) {
 func source(codec string, lossless bool, rate, bits, ch int,
 ) audio.SourceInfo {
 	return audio.SourceInfo{
-		Codec:        codec,
-		Lossless:     lossless,
-		SampleRate:   rate,
-		BitDepth:     bits,
-		Channels:     ch,
-		TotalSamples: int64(rate) * 60,
+		Codec:      codec,
+		Lossless:   lossless,
+		SampleRate: rate,
+		BitDepth:   bits,
+		Channels:   ch,
+		Samples:    int64(rate) * 60,
 	}
 }
 

@@ -95,7 +95,7 @@ func TestProbeFLAC24(t *testing.T) {
 	assert.Equal(t, 24, info.BitDepth)
 	assert.Equal(t, 6, info.Channels)
 	assert.Equal(t, "5.1", info.Layout)
-	assert.Equal(t, int64(192000), info.TotalSamples)
+	assert.Equal(t, int64(192000), info.Samples)
 }
 
 func TestProbeMP3(t *testing.T) {
@@ -107,7 +107,7 @@ func TestProbeMP3(t *testing.T) {
 	assert.False(t, info.Lossless)
 	assert.Equal(t, 0, info.BitDepth)
 	assert.Equal(t, 44100, info.SampleRate)
-	assert.InDelta(t, 88200, info.TotalSamples, 3000)
+	assert.InDelta(t, 88200, info.Samples, 3000)
 }
 
 // The float path must not change 16-bit samples: ffmpeg's int→float

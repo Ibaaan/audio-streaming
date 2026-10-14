@@ -106,12 +106,12 @@ func sourceInfo(p probeOutput) (audio.SourceInfo, error) {
 	}
 
 	info := audio.SourceInfo{
-		Codec:        s.CodecName,
-		Lossless:     isLossless(s.CodecName),
-		SampleRate:   rate,
-		Channels:     s.Channels,
-		Layout:       layout(s.ChannelLayout),
-		TotalSamples: totalSamples(s, p.Format.Duration, rate),
+		Codec:      s.CodecName,
+		Lossless:   isLossless(s.CodecName),
+		SampleRate: rate,
+		Channels:   s.Channels,
+		Layout:     layout(s.ChannelLayout),
+		Samples:    totalSamples(s, p.Format.Duration, rate),
 	}
 	if info.Lossless {
 		info.BitDepth = bitDepth(s)

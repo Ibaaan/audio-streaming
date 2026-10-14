@@ -23,7 +23,7 @@ func TestSourceInfo(t *testing.T) {
 			audio.SourceInfo{
 				Codec: "flac", Lossless: true, SampleRate: 96000,
 				BitDepth: 24, Channels: 6, Layout: "5.1(side)",
-				TotalSamples: 192000,
+				Samples: 192000,
 			},
 		},
 		{
@@ -34,7 +34,7 @@ func TestSourceInfo(t *testing.T) {
 			"duration_ts":28224000}]}`,
 			audio.SourceInfo{
 				Codec: "mp3", SampleRate: 44100, Channels: 2,
-				Layout: "stereo", TotalSamples: 88200,
+				Layout: "stereo", Samples: 88200,
 			},
 		},
 		{
@@ -46,7 +46,7 @@ func TestSourceInfo(t *testing.T) {
 			audio.SourceInfo{
 				Codec: "pcm_s16le", Lossless: true, SampleRate: 44100,
 				BitDepth: 16, Channels: 1, Layout: "mono",
-				TotalSamples: 66150,
+				Samples: 66150,
 			},
 		},
 		{

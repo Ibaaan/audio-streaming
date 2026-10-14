@@ -62,7 +62,7 @@ func MakePlan(src audio.SourceInfo) (Plan, error) {
 		src.BitDepth == targetBitDepth &&
 		src.Channels == targetChannels &&
 		!p.Resample
-	p.SeekIntervalSec = seekInterval(src.TotalSamples, src.SampleRate)
+	p.SeekIntervalSec = seekInterval(src.Samples, src.SampleRate)
 	return p, nil
 }
 

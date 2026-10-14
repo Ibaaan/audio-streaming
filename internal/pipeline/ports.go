@@ -28,8 +28,7 @@ type MetaExtractor interface {
 // little-endian at 44.1 kHz. dstPath must be a file: FLAC rewrites its
 // header once the stream ends.
 type Encoder interface {
-	Encode(ctx context.Context, pcm io.Reader, opt audio.EncodeOptions,
-		dstPath string) error
+	Encode(ctx context.Context, pcm io.Reader, opt audio.EncodeOptions, dstPath string) error
 }
 
 // Verifier independently checks the encoded file.
@@ -39,8 +38,7 @@ type Verifier interface {
 
 // Uploader stores audio and cover blobs. Satisfied by *s3store.Store.
 type Uploader interface {
-	Upload(ctx context.Context, key string, r io.Reader, size int64,
-		contentType string) (int64, error)
+	Upload(ctx context.Context, key string, r io.Reader, size int64, contentType string) (int64, error)
 }
 
 // RecordSaver persists the track record linking metadata and blob keys.

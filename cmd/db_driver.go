@@ -1,10 +1,10 @@
 package main
 
 import (
-	repo "audio-streaming/internal/adapters/repository"
+	"audio-streaming/internal/adapters/postgres"
 	"context"
 )
 
 func main() {
-	repo.Open(context.Background(), repo.ConfigFromEnv())
+	postgres.Open(context.Background(), postgres.ConfigFromEnv())
 }

@@ -2,22 +2,31 @@ package audio
 
 import "time"
 
+// represent the audio metadata
 type Record struct {
-	ID       string
-	AudioKey string
-	CoverKey string
-	Tags     Tags
-	Duration time.Duration
+	SourceInfo SourceInfo
+	Tags       Tags
+	Cover      *Cover // nil if the file has no embedded artwork
 }
 
+func (a Record) Duration() time.Duration { return a.SourceInfo.Duration() }
+
+// technical properties of the source audio stream
 type SourceInfo struct {
-	Codec        string
-	Lossless     bool
-	SampleRate   int
-	BitDepth     int
-	Channels     int
-	Layout       string
-	TotalSamples int64
+	Codec      string
+	Lossless   bool
+	SampleRate int
+	BitDepth   int
+	Channels   int
+	Layout     string
+	Samples    int64 // total samples per channel
+}
+
+func (f SourceInfo) Duration() time.Duration {
+	if f.SampleRate == 0 {
+		return 0
+	}
+	return time.Duration(f.Samples) * time.Second / time.Duration(f.SampleRate)
 }
 
 type Tags struct {
