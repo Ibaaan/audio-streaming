@@ -1,4 +1,3 @@
-
 CREATE OR REPLACE FUNCTION set_updated_at() RETURNS trigger AS $$
 BEGIN
   NEW.updated_at := now();
@@ -6,7 +5,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- ---------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 CREATE TABLE images (
   id               uuid        PRIMARY KEY,
   storage_path     text        NOT NULL UNIQUE,
@@ -18,7 +17,7 @@ CREATE TABLE images (
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
 
--- ---------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 CREATE TABLE artists (
   id             uuid        PRIMARY KEY,
   name           text        NOT NULL CHECK (btrim(name) <> ''),
@@ -29,7 +28,7 @@ CREATE TABLE artists (
 );
 CREATE INDEX artists_name_lower ON artists (lower(name));
 
--- ---------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 CREATE TABLE albums (
   id                      uuid        PRIMARY KEY,
   title                   text        NOT NULL CHECK (btrim(title) <> ''),
@@ -48,10 +47,10 @@ CREATE TABLE album_artists (
   PRIMARY KEY (album_id, artist_id),
   UNIQUE (album_id, position)
 );
-CREATE INDEX album_artists_artist_id ON album_artists (artist_id);  
+CREATE INDEX album_artists_artist_id ON album_artists (artist_id);
 
 
--- ---------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 CREATE TABLE tracks (
   id           uuid        PRIMARY KEY,
   title        text        NOT NULL CHECK (btrim(title) <> ''),
@@ -60,14 +59,14 @@ CREATE TABLE tracks (
   created_at   timestamptz NOT NULL DEFAULT now(),
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX tracks_status     ON tracks (status) WHERE status <> 'ready'; 
+CREATE INDEX tracks_status     ON tracks (status) WHERE status <> 'ready';
 
 CREATE TABLE track_artists (
   track_id   uuid     NOT NULL REFERENCES tracks(id)  ON DELETE CASCADE,
   artist_id  uuid     NOT NULL REFERENCES artists(id) ON DELETE RESTRICT,
   role       text,
   position   smallint NOT NULL CHECK (position >= 0),
-  PRIMARY KEY (track_id, artist_id),     
+  PRIMARY KEY (track_id, artist_id),
   UNIQUE (track_id, position)
 );
 CREATE INDEX track_artists_artist_id ON track_artists (artist_id, role);
@@ -79,13 +78,12 @@ CREATE TABLE album_tracks (
   disc_no   smallint NOT NULL CHECK (disc_no  > 0),
   track_no  smallint NOT NULL           CHECK (track_no > 0),
   PRIMARY KEY (album_id, track_id),
-  UNIQUE (album_id, disc_no, track_no)         
+  UNIQUE (album_id, disc_no, track_no)
 );
-CREATE INDEX album_tracks_track_id ON album_tracks (track_id);   
+CREATE INDEX album_tracks_track_id ON album_tracks (track_id);
 
--- ---------------------------------------------------------------------------
+-----------------------------------------------------------------------------
 CREATE TRIGGER images_updated_at      BEFORE UPDATE ON images      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER artists_updated_at     BEFORE UPDATE ON artists     FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER albums_updated_at      BEFORE UPDATE ON albums      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 CREATE TRIGGER tracks_updated_at      BEFORE UPDATE ON tracks      FOR EACH ROW EXECUTE FUNCTION set_updated_at();
-
