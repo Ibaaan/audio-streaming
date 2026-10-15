@@ -16,15 +16,6 @@ const (
 	ImageFormatAVIF ImageFormat = "avif"
 )
 
-type Status string
-
-const (
-	StatusPending    Status = "pending"
-	StatusProcessing Status = "processing"
-	StatusReady      Status = "ready"
-	StatusFailed     Status = "failed"
-)
-
 type AlbumType string
 
 const (
@@ -51,7 +42,6 @@ type Image struct {
 	OriginalFormat ImageFormat `db:"original_format" json:"original_format"`
 	Width          *int32      `db:"width"           json:"width,omitempty"`
 	Height         *int32      `db:"height"          json:"height,omitempty"`
-	Status         Status      `db:"status"          json:"status"`
 	CreatedAt      time.Time   `db:"created_at"      json:"created_at"`
 	UpdatedAt      time.Time   `db:"updated_at"      json:"updated_at"`
 }
@@ -85,7 +75,6 @@ type Track struct {
 	ID         uuid.UUID `db:"id"          json:"id"`
 	Title      string    `db:"title"       json:"title"`
 	DurationMs int32     `db:"duration_ms" json:"duration_ms"`
-	Status     Status    `db:"status"      json:"status,omitempty"`
 	CreatedAt  time.Time `db:"created_at"  json:"created_at"`
 	UpdatedAt  time.Time `db:"updated_at"  json:"updated_at"`
 }

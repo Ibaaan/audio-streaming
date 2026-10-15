@@ -81,11 +81,7 @@ var (
 // WithTransaction runs functions in order inside one transaction. If any fn
 // returns an error, the remaining fns are skipped and the transaction is
 // rolled back. If all succeed, the transaction is committed.
-func WithTransaction(ctx context.Context, txBeginner TxBeginner, fns ...func(tx DBTX) error) error {
-	if len(fns) == 0 {
-		return nil
-	}
-
+func WithTransaction(ctx context.Context, txBeginner TxBeginner, fun func(tx DBTX) error) error {
 	tx, err := txBeginner.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
@@ -96,10 +92,8 @@ func WithTransaction(ctx context.Context, txBeginner TxBeginner, fns ...func(tx 
 		_ = tx.Rollback(rbCtx)
 	}()
 
-	for i, fn := range fns {
-		if err := fn(tx); err != nil {
-			return fmt.Errorf("tx step %d: %w", i, err)
-		}
+	if err := fun(tx); err != nil {
+		return fmt.Errorf("errir in tx: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

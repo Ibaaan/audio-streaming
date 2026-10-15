@@ -7,8 +7,8 @@ import (
 )
 
 var INSERT_TRACK_QUERY string = `
-INSERT INTO tracks (id, title, duration_ms, status)
-VALUES ($1, $2, $3, $4)
+INSERT INTO tracks (id, title, duration_ms)
+VALUES ($1, $2, $3)
 RETURNING created_at, updated_at`
 
 func AddTrack(
@@ -26,7 +26,6 @@ func AddTrack(
 		ID:         id,
 		Title:      title,
 		DurationMs: durationMs,
-		Status:     StatusProcessing,
 	}
 
 	err = dbtx.QueryRow(
@@ -35,7 +34,6 @@ func AddTrack(
 		track.ID,
 		track.Title,
 		track.DurationMs,
-		track.Status,
 	).Scan(&track.CreatedAt, &track.UpdatedAt)
 	if err != nil {
 		return Track{}, err
@@ -44,8 +42,8 @@ func AddTrack(
 }
 
 var INSERT_IMAGE_QUERY string = `
-INSERT INTO images (id, storage_path, original_format, width, height, status)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO images (id, storage_path, original_format, width, height)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING created_at, updated_at`
 
 func AddImage(
@@ -67,7 +65,6 @@ func AddImage(
 		OriginalFormat: format,
 		Width:          width,
 		Height:         height,
-		Status:         StatusPending,
 	}
 
 	err = dbtx.QueryRow(
@@ -78,7 +75,6 @@ func AddImage(
 		image.OriginalFormat,
 		image.Width,
 		image.Height,
-		image.Status,
 	).Scan(&image.CreatedAt, &image.UpdatedAt)
 	if err != nil {
 		return Image{}, err

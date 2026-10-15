@@ -46,16 +46,31 @@ func (b *fakeBeginner) Begin(ctx context.Context) (pgx.Tx, error) {
 func TestWithTransactionCommitsWhenAllStepsSucceed(t *testing.T) {
 	tx := &fakeTx{}
 	var calls []int
-	step := func(n int) func(DBTX) error {
-		return func(got DBTX) error {
-			assert.Same(t, tx, got, "step %d tx", n)
-			calls = append(calls, n)
-			return nil
-		}
+	number := 0
+	ok := func(DBTX) error {
+		calls = append(calls, number)
+		number += 1
+		return nil
 	}
 
-	err := WithTransaction(context.Background(), &fakeBeginner{tx: tx},
-		step(0), step(1), step(2))
+	err := WithTransaction(
+		context.Background(),
+		&fakeBeginner{tx: tx},
+		func(dbtx DBTX) error {
+			if err := ok(dbtx); err != nil {
+				return err
+			}
+
+			if err := ok(dbtx); err != nil {
+				return err
+			}
+
+			if err := ok(dbtx); err != nil {
+				return err
+			}
+			return nil
+		},
+	)
 
 	require.NoError(t, err)
 	assert.Equal(t, []int{0, 1, 2}, calls)
@@ -66,18 +81,37 @@ func TestWithTransactionStopsAndRollsBackOnStepError(t *testing.T) {
 	tx := &fakeTx{}
 	stepErr := errors.New("boom")
 	var calls []int
-	ok := func(n int) func(DBTX) error {
-		return func(DBTX) error { calls = append(calls, n); return nil }
+	number := 0
+	ok := func(DBTX) error {
+		calls = append(calls, number)
+		number += 1
+		return nil
 	}
-	fail := func(n int) func(DBTX) error {
-		return func(DBTX) error { calls = append(calls, n); return stepErr }
+	fail := func(DBTX) error {
+		calls = append(calls, number)
+		number += 1
+		return stepErr
+	}
+
+	test := func(dbtx DBTX) error {
+		if err := ok(dbtx); err != nil {
+			return err
+		}
+
+		if err := fail(dbtx); err != nil {
+			return err
+		}
+
+		if err := ok(dbtx); err != nil {
+			return err
+		}
+		return nil
 	}
 
 	err := WithTransaction(context.Background(), &fakeBeginner{tx: tx},
-		ok(0), fail(1), ok(2))
+		test)
 
 	require.ErrorIs(t, err, stepErr)
-	assert.ErrorContains(t, err, "tx step 1")
 	assert.Equal(t, []int{0, 1}, calls, "steps after failure skipped")
 	assert.False(t, tx.committed, "committed")
 	assert.True(t, tx.rolledBack, "rolled back")

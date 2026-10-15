@@ -12,7 +12,6 @@ CREATE TABLE images (
   original_format  text        NOT NULL,
   width            int         CHECK (width  > 0),
   height           int         CHECK (height > 0),
-  status           text        NOT NULL CHECK (status IN ('pending','processing','ready','failed')),
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
@@ -21,7 +20,7 @@ CREATE TABLE images (
 CREATE TABLE artists (
   id             uuid        PRIMARY KEY,
   name           text        NOT NULL CHECK (btrim(name) <> ''),
-  sort_name      text,                                   -- "Beatles, The"
+  sort_name      text,
   image_id       uuid        REFERENCES images(id) ON DELETE SET NULL,
   created_at     timestamptz NOT NULL DEFAULT now(),
   updated_at     timestamptz NOT NULL DEFAULT now()
@@ -55,11 +54,9 @@ CREATE TABLE tracks (
   id           uuid        PRIMARY KEY,
   title        text        NOT NULL CHECK (btrim(title) <> ''),
   duration_ms  int         NOT NULL CHECK (duration_ms > 0),
-  status       text        NOT NULL CHECK (status IN ('pending','ready','hidden','failed')),
   created_at   timestamptz NOT NULL DEFAULT now(),
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX tracks_status     ON tracks (status) WHERE status <> 'ready';
 
 CREATE TABLE track_artists (
   track_id   uuid     NOT NULL REFERENCES tracks(id)  ON DELETE CASCADE,
