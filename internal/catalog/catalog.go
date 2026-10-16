@@ -1,6 +1,9 @@
-package postgres
+// Package catalog holds the music catalog: tracks, albums, artists and
+// their images, as stored by the repository.
+package catalog
 
 import (
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -93,3 +96,6 @@ type AlbumTrack struct {
 	DiscNo  int16     `db:"disc_no"  json:"disc_no"`
 	TrackNo int16     `db:"track_no" json:"track_no"`
 }
+
+// ErrNotFound is returned by lookups that match no row.
+var ErrNotFound = errors.New("catalog: not found")

@@ -61,8 +61,12 @@ func generateConnStringPGSQL(cfg config) string {
 	return u.String()
 }
 
+// DBTX is a pool, a connection or a transaction. Begin on a transaction
+// opens a savepoint, so transactions nest.
 type DBTX interface {
-	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+	TxBeginner
+	Exec(ctx context.Context, sql string, args ...any) (
+		pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
@@ -74,6 +78,7 @@ type TxBeginner interface {
 
 var (
 	_ DBTX       = (*pgxpool.Pool)(nil)
+	_ DBTX       = (*pgx.Conn)(nil)
 	_ DBTX       = (pgx.Tx)(nil)
 	_ TxBeginner = (*pgxpool.Pool)(nil)
 )
@@ -81,19 +86,24 @@ var (
 // WithTransaction runs functions in order inside one transaction. If any fn
 // returns an error, the remaining fns are skipped and the transaction is
 // rolled back. If all succeed, the transaction is committed.
-func WithTransaction(ctx context.Context, txBeginner TxBeginner, fun func(tx DBTX) error) error {
+func WithTransaction(
+	ctx context.Context,
+	txBeginner TxBeginner,
+	fun func(tx DBTX) error,
+) error {
 	tx, err := txBeginner.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
-		rbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+		rbCtx, cancel := context.WithTimeout(
+			context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = tx.Rollback(rbCtx)
 	}()
 
 	if err := fun(tx); err != nil {
-		return fmt.Errorf("errir in tx: %w", err)
+		return fmt.Errorf("in tx: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
