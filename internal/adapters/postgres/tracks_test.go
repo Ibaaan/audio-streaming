@@ -108,3 +108,43 @@ func TestAddTrackArtistRejectsDuplicatePosition(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func mustAddTrackArtist(
+	t *testing.T,
+	repo *Repository,
+	track catalog.Track,
+	artist catalog.Artist,
+) {
+	t.Helper()
+	trackArtist := catalog.TrackArtist{
+		TrackID:  track.ID,
+		ArtistID: artist.ID,
+	}
+	require.NoError(t,
+		repo.AddTrackArtist(context.Background(), trackArtist),
+		"AddTrackArtist")
+}
+
+func TestFindTrackIgnoresCase(t *testing.T) {
+	repo := newTestRepo(t)
+	artist := mustAddArtist(t, repo, "Slipknot")
+	track := mustAddTrack(t, repo)
+	mustAddTrackArtist(t, repo, track, artist)
+
+	got, err := repo.FindTrack(context.Background(), "DUALITY", artist.ID)
+
+	require.NoError(t, err)
+	assert.Equal(t, track, got)
+}
+
+func TestFindTrackIgnoresOtherArtists(t *testing.T) {
+	repo := newTestRepo(t)
+	owner := mustAddArtist(t, repo, "Slipknot")
+	other := mustAddArtist(t, repo, "Stone Sour")
+	track := mustAddTrack(t, repo)
+	mustAddTrackArtist(t, repo, track, owner)
+
+	_, err := repo.FindTrack(context.Background(), "Duality", other.ID)
+
+	assert.ErrorIs(t, err, catalog.ErrNotFound)
+}

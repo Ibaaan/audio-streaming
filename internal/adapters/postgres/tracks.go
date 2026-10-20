@@ -41,3 +41,21 @@ func (r *Repository) AddTrackArtist(
 		ta.TrackID, ta.ArtistID, ta.Role, ta.Position)
 	return err
 }
+
+// Titles are not unique, even per artist, so the oldest match wins.
+const selectTrackByArtistQuery = `
+SELECT t.* FROM tracks t
+JOIN track_artists ta ON ta.track_id = t.id
+WHERE lower(t.title) = lower($1) AND ta.artist_id = $2
+ORDER BY t.created_at, t.id
+LIMIT 1`
+
+// FindTrack looks up a track of artistID by title, case-insensitively.
+func (r *Repository) FindTrack(
+	ctx context.Context,
+	title string,
+	artistID uuid.UUID,
+) (catalog.Track, error) {
+	return queryOne[catalog.Track](ctx, r.dbtx, selectTrackByArtistQuery,
+		title, artistID)
+}

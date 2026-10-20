@@ -18,7 +18,7 @@ func TestWithinTxCommits(t *testing.T) {
 	var track catalog.Track
 
 	err := repo.WithinTx(context.Background(),
-		func(tx *Repository) error {
+		func(tx catalog.Repository) error {
 			track = mustAddTrack(t, tx)
 			return nil
 		})
@@ -34,7 +34,7 @@ func TestWithinTxRollsBackOnError(t *testing.T) {
 	var track catalog.Track
 
 	err := repo.WithinTx(context.Background(),
-		func(tx *Repository) error {
+		func(tx catalog.Repository) error {
 			track = mustAddTrack(t, tx)
 			return stepErr
 		})

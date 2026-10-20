@@ -99,7 +99,7 @@ func newID(t *testing.T) uuid.UUID {
 	return id
 }
 
-func mustAddTrack(t *testing.T, repo *Repository) catalog.Track {
+func mustAddTrack(t *testing.T, repo catalog.TrackRepository) catalog.Track {
 	t.Helper()
 	track := catalog.Track{
 		ID:         newID(t),

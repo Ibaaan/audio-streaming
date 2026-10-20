@@ -20,12 +20,14 @@ func NewRepository(dbtx DBTX) *Repository {
 	return &Repository{dbtx: dbtx}
 }
 
+var _ catalog.Repository = (*Repository)(nil)
+
 // WithinTx runs fn with a repository bound to a new transaction and
 // commits if fn returns nil. On a repository that is already inside a
-// transaction it opens a savepoint instead.
+// transaction it opens a savepoint instead. tx is a *Repository.
 func (r *Repository) WithinTx(
 	ctx context.Context,
-	fn func(tx *Repository) error,
+	fn func(tx catalog.Repository) error,
 ) error {
 	return WithTransaction(ctx, r.dbtx, func(tx DBTX) error {
 		return fn(NewRepository(tx))
