@@ -148,3 +148,62 @@ func TestFindTrackIgnoresOtherArtists(t *testing.T) {
 
 	assert.ErrorIs(t, err, catalog.ErrNotFound)
 }
+
+func TestListTracksJoinsArtistsAndAlbum(t *testing.T) {
+	repo := newTestRepo(t)
+	ctx := context.Background()
+	track := mustAddTrack(t, repo)
+	corey := mustAddArtist(t, repo, "Corey Taylor")
+	slipknot := mustAddArtist(t, repo, "Slipknot")
+	require.NoError(t, repo.AddTrackArtist(ctx, catalog.TrackArtist{
+		TrackID: track.ID, ArtistID: slipknot.ID, Position: 0,
+	}), "AddTrackArtist")
+	require.NoError(t, repo.AddTrackArtist(ctx, catalog.TrackArtist{
+		TrackID: track.ID, ArtistID: corey.ID, Position: 1,
+	}), "AddTrackArtist")
+	album := catalog.Album{
+		ID:          newID(t),
+		Title:       "Vol. 3",
+		AlbumType:   catalog.AlbumTypeAlbum,
+		ReleaseYear: ptr(int16(2004)),
+	}
+	require.NoError(t, repo.AddAlbum(ctx, &album), "AddAlbum")
+	require.NoError(t, repo.AddAlbumTrack(ctx, catalog.AlbumTrack{
+		AlbumID: album.ID, TrackID: track.ID,
+		Quality: catalog.QualityLossless, DiscNo: 1, TrackNo: 2,
+	}), "AddAlbumTrack")
+
+	got, err := repo.ListTracks(ctx)
+
+	require.NoError(t, err)
+	assert.Equal(t, []catalog.TrackSummary{{
+		ID:          track.ID,
+		Title:       "Duality",
+		Artist:      "Slipknot, Corey Taylor",
+		Album:       ptr("Vol. 3"),
+		ReleaseYear: ptr(int16(2004)),
+		DurationMs:  252_000,
+		CreatedAt:   track.CreatedAt,
+	}}, got)
+}
+
+func TestListTracksWithoutAlbum(t *testing.T) {
+	repo := newTestRepo(t)
+	mustAddTrack(t, repo)
+
+	got, err := repo.ListTracks(context.Background())
+
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Nil(t, got[0].Album)
+	assert.Nil(t, got[0].ReleaseYear)
+}
+
+func TestListTracksEmpty(t *testing.T) {
+	repo := newTestRepo(t)
+
+	got, err := repo.ListTracks(context.Background())
+
+	require.NoError(t, err)
+	assert.Empty(t, got)
+}

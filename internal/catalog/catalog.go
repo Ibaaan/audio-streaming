@@ -99,3 +99,17 @@ type AlbumTrack struct {
 
 // ErrNotFound is returned by lookups that match no row.
 var ErrNotFound = errors.New("catalog: not found")
+
+// TrackSummary is a track joined with what a track list shows next to
+// it. Artist joins the track's artists in position order. Album and
+// ReleaseYear come from one album the track is on, and are nil if it is
+// on none.
+type TrackSummary struct {
+	ID          uuid.UUID `db:"id"           json:"id"`
+	Title       string    `db:"title"        json:"title"`
+	Artist      string    `db:"artist"       json:"artist"`
+	Album       *string   `db:"album"        json:"album,omitempty"`
+	ReleaseYear *int16    `db:"release_year" json:"release_year,omitempty"`
+	DurationMs  int32     `db:"duration_ms"  json:"duration_ms"`
+	CreatedAt   time.Time `db:"created_at"   json:"created_at"`
+}

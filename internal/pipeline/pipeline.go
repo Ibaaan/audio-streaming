@@ -2,10 +2,20 @@ package pipeline
 
 import (
 	"audio-streaming/internal/audio"
-	"audio-streaming/internal/dsp"
 	"context"
 	"errors"
+	"fmt"
+	"mime"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/google/uuid"
 )
+
+// ErrInvalidSource is returned by Run for a file that is not audio it
+// can read, such as an empty file or one without an audio stream.
+var ErrInvalidSource = errors.New("pipeline: invalid source")
 
 type Deps struct {
 	Decoder  Decoder
@@ -33,41 +43,66 @@ func New(d Deps, tmpDir string) (*Pipeline, error) {
 	return &Pipeline{d: d, tmpDir: tmpDir}, nil
 }
 
-func (p *Pipeline) Run(ctx context.Context, path string) (
-	audio.BlockReader, error,
-) {
-	sourcInfo, err := p.d.Decoder.Probe(ctx, path)
+// Run imports the audio file at path: it uploads the file unchanged to
+// audio/<id><ext> and then saves the track record. The record is saved
+// last, so a saved track always has its audio stored. Encoding and
+// verification are not done yet.
+func (p *Pipeline) Run(ctx context.Context, path string) error {
+	info, err := p.d.Decoder.Probe(ctx, path)
 	if err != nil {
-		return &audio.SimpleBlockReader{}, err
+		return fmt.Errorf("%w: probing: %w", ErrInvalidSource, err)
+	}
+	tags, cover, err := p.d.Meta.Extract(ctx, path)
+	if err != nil {
+		return fmt.Errorf("reading metadata: %w", err)
+	}
+	id, err := uuid.NewV7()
+	if err != nil {
+		return err
 	}
 
-	plan, err := MakePlan(sourcInfo)
-	if err != nil {
-		return &audio.SimpleBlockReader{}, err
+	if err := p.uploadAudio(ctx, id, path); err != nil {
+		return err
 	}
 
-	decodeSpec, err := decodeSpec(sourcInfo, plan)
-	if err != nil {
-		return &audio.SimpleBlockReader{}, err
+	rec := audio.Record{
+		TrackId:    id,
+		SourceInfo: info,
+		Tags:       tags,
+		Cover:      cover,
 	}
-
-	blockReader, err := p.d.Decoder.Open(ctx, path, decodeSpec)
-	if err != nil {
-		return &audio.SimpleBlockReader{}, err
+	if err := p.d.Records.Save(ctx, rec); err != nil {
+		return fmt.Errorf("saving record: %w", err)
 	}
-
-	return blockReader, nil
+	return nil
 }
 
-func decodeSpec(info audio.SourceInfo, plan Plan) (audio.DecodeSpec, error) {
-	spec := audio.DecodeSpec{SampleRate: targetRate}
-
-	if plan.Mix != MixNone {
-		m, err := dsp.MixMatrix(info.Channels, info.Layout)
-		if err != nil {
-			return audio.DecodeSpec{}, err
-		}
-		spec.Mix = m
+func (p *Pipeline) uploadAudio(
+	ctx context.Context, id uuid.UUID, path string,
+) error {
+	f, err := os.Open(path)
+	if err != nil {
+		return err
 	}
-	return spec, nil
+	defer func() { _ = f.Close() }()
+
+	st, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if st.Size() == 0 {
+		return fmt.Errorf("%w: %s is empty", ErrInvalidSource, path)
+	}
+
+	ext := strings.ToLower(filepath.Ext(path))
+	key := "audio/" + id.String() + ext
+	_, err = p.d.Blobs.Upload(ctx, key, f, st.Size(), contentType(ext))
+	return err
+}
+
+func contentType(ext string) string {
+	if t := mime.TypeByExtension(ext); t != "" {
+		return t
+	}
+	return "application/octet-stream"
 }

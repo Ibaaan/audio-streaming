@@ -2,23 +2,224 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Audio Streaming</title>
+	<style>
+		:root {
+			--bg: #fafafa;
+			--fg: #1a1a1a;
+			--muted: #6b6b6b;
+			--line: #e2e2e2;
+			--accent: #2f6fdb;
+			--row-hover: #f0f4fc;
+			--error: #c62828;
+		}
+		@media (prefers-color-scheme: dark) {
+			:root {
+				--bg: #161616;
+				--fg: #e8e8e8;
+				--muted: #9a9a9a;
+				--line: #2e2e2e;
+				--accent: #6b9cf0;
+				--row-hover: #1f2633;
+				--error: #ef6b6b;
+			}
+		}
+		* { box-sizing: border-box; }
+		body {
+			margin: 0;
+			background: var(--bg);
+			color: var(--fg);
+			font: 15px/1.5 system-ui, sans-serif;
+		}
+		main { max-width: 900px; margin: 0 auto; padding: 24px 16px 140px; }
+		h1 { font-size: 22px; margin: 0 0 20px; }
+		form {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 12px;
+			align-items: center;
+			padding: 16px;
+			border: 1px solid var(--line);
+			border-radius: 8px;
+			margin-bottom: 8px;
+		}
+		input[type=file] { flex: 1; min-width: 0; color: var(--fg); }
+		button {
+			background: var(--accent);
+			color: #fff;
+			border: 0;
+			border-radius: 6px;
+			padding: 8px 16px;
+			font: inherit;
+			cursor: pointer;
+		}
+		button:disabled { opacity: .5; cursor: default; }
+		#status { min-height: 1.5em; margin: 0 0 16px; color: var(--muted); }
+		#status.error { color: var(--error); }
+		table { width: 100%; border-collapse: collapse; }
+		th, td {
+			text-align: left;
+			padding: 8px;
+			border-bottom: 1px solid var(--line);
+		}
+		th { color: var(--muted); font-weight: 500; font-size: 13px; }
+		tbody tr { cursor: pointer; }
+		tbody tr:hover { background: var(--row-hover); }
+		tbody tr.playing { color: var(--accent); font-weight: 600; }
+		td.num { text-align: right; font-variant-numeric: tabular-nums; }
+		.empty { color: var(--muted); text-align: center; padding: 32px; }
+		.hide-narrow { }
+		@media (max-width: 600px) {
+			.hide-narrow { display: none; }
+		}
+		footer {
+			position: fixed;
+			left: 0; right: 0; bottom: 0;
+			background: var(--bg);
+			border-top: 1px solid var(--line);
+			padding: 12px 16px;
+		}
+		footer .inner { max-width: 900px; margin: 0 auto; }
+		#now { margin: 0 0 6px; font-size: 14px; color: var(--muted); }
+		audio { width: 100%; }
+	</style>
 </head>
 <body>
-	<h1>Slipknot - Duality</h1>
-	<audio id="player" controls></audio>
+	<main>
+		<h1>Tracks</h1>
+
+		<form id="upload">
+			<input type="file" name="file" accept="audio/*" required>
+			<button type="submit">Upload</button>
+		</form>
+		<p id="status"></p>
+
+		<table>
+			<thead>
+				<tr>
+					<th>Title</th>
+					<th>Artist</th>
+					<th class="hide-narrow">Album</th>
+					<th class="hide-narrow">Year</th>
+					<th class="num">Length</th>
+				</tr>
+			</thead>
+			<tbody id="tracks"></tbody>
+		</table>
+	</main>
+
+	<footer>
+		<div class="inner">
+			<p id="now">Click a track to play it</p>
+			<audio id="player" controls preload="none"></audio>
+		</div>
+	</footer>
 
 	<script>
-		async function loadSong() {
-			const res = await fetch("/song");
-			if (!res.ok) {
-				throw new Error("failed to get song url: " + res.status);
-			}
-			const url = await res.text();
-			document.getElementById("player").src = url;
+		const tbody = document.getElementById("tracks");
+		const statusEl = document.getElementById("status");
+		const player = document.getElementById("player");
+		const nowEl = document.getElementById("now");
+		const form = document.getElementById("upload");
+
+		function setStatus(text, isError) {
+			statusEl.textContent = text;
+			statusEl.className = isError ? "error" : "";
 		}
 
-		loadSong().catch((err) => console.error(err));
+		async function errorMessage(res) {
+			try {
+				const body = await res.json();
+				return body.error.message;
+			} catch {
+				return res.status + " " + res.statusText;
+			}
+		}
+
+		function formatDuration(ms) {
+			const s = Math.round(ms / 1000);
+			return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+		}
+
+		function cell(text, className) {
+			const td = document.createElement("td");
+			td.textContent = text ?? "";
+			if (className) td.className = className;
+			return td;
+		}
+
+		async function loadTracks() {
+			const res = await fetch("/v1/tracks");
+			if (!res.ok) {
+				setStatus("Failed to load tracks: " + await errorMessage(res),
+					true);
+				return;
+			}
+			const { tracks } = await res.json();
+			tbody.replaceChildren();
+			if (tracks.length === 0) {
+				const tr = document.createElement("tr");
+				const td = cell("No tracks yet. Upload one above.", "empty");
+				td.colSpan = 5;
+				tr.append(td);
+				tbody.append(tr);
+				return;
+			}
+			for (const t of tracks) {
+				const tr = document.createElement("tr");
+				tr.dataset.id = t.id;
+				tr.append(
+					cell(t.title),
+					cell(t.artist),
+					cell(t.album, "hide-narrow"),
+					cell(t.release_year, "hide-narrow"),
+					cell(formatDuration(t.duration_ms), "num"),
+				);
+				tr.addEventListener("click", () => play(t, tr));
+				tbody.append(tr);
+			}
+		}
+
+		async function play(track, row) {
+			const res = await fetch("/v1/tracks/" + track.id + "/stream");
+			if (!res.ok) {
+				setStatus("Cannot play: " + await errorMessage(res), true);
+				return;
+			}
+			const { url } = await res.json();
+			player.src = url;
+			player.play();
+			nowEl.textContent = track.artist + " — " + track.title;
+			for (const tr of tbody.children) tr.classList.remove("playing");
+			row.classList.add("playing");
+		}
+
+		form.addEventListener("submit", async (e) => {
+			e.preventDefault();
+			const button = form.querySelector("button");
+			button.disabled = true;
+			setStatus("Uploading…");
+			try {
+				const res = await fetch("/v1/tracks", {
+					method: "POST",
+					body: new FormData(form),
+				});
+				if (!res.ok) {
+					setStatus("Upload failed: " + await errorMessage(res), true);
+					return;
+				}
+				setStatus("Uploaded.");
+				form.reset();
+				await loadTracks();
+			} catch (err) {
+				setStatus("Upload failed: " + err.message, true);
+			} finally {
+				button.disabled = false;
+			}
+		});
+
+		loadTracks().catch((err) => setStatus(err.message, true));
 	</script>
 </body>
 </html>

@@ -2,109 +2,100 @@ package main
 
 import (
 	"context"
-	"encoding/json"
+	"errors"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"time"
 
+	"audio-streaming/internal/adapters/ffmpeg"
+	"audio-streaming/internal/adapters/postgres"
 	s3store "audio-streaming/internal/adapters/s3store"
+	"audio-streaming/internal/pipeline"
+	"audio-streaming/internal/service"
 )
 
 func main() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
 
-	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, os.Kill)
-
-	testVolume, err := s3store.CreateTestVolume(ctx,
-		s3store.ConfigFromEnv(), "test_data")
-	if err != nil {
-		slog.Error("creating test volume", "error", err)
+	if err := run(ctx); err != nil {
+		slog.Error("fatal", "error", err)
 		os.Exit(1)
 	}
-	defer stop()
+}
+
+func run(ctx context.Context) error {
+	pool, err := postgres.Open(ctx, postgres.ConfigFromEnv())
+	if err != nil {
+		return err
+	}
+	defer pool.Close()
+
+	applied, err := postgres.Migrate(ctx, pool, "migrations")
+	if err != nil {
+		return err
+	}
+	for _, name := range applied {
+		slog.Info("applied migration", "name", name)
+	}
+
+	store, err := s3store.New(ctx, s3store.ConfigFromEnv())
+	if err != nil {
+		return err
+	}
+
+	repo := postgres.NewRepository(pool)
+	ff := ffmpeg.New(os.Getenv("FFMPEG"), os.Getenv("FFPROBE"))
+	tmpDir := os.TempDir()
+	p, err := pipeline.New(pipeline.Deps{
+		Decoder:  ff,
+		Meta:     ff,
+		Encoder:  noEncoder{},
+		Verifier: noVerifier{},
+		Blobs:    store,
+		Records: recordSaver{
+			lib:   service.NewLibrary(repo),
+			blobs: store,
+		},
+	}, tmpDir)
+	if err != nil {
+		return err
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServer(http.Dir("static")))
-	mux.HandleFunc("GET /tracks", listTracks(testVolume.Client))
-	mux.HandleFunc("GET /song", getUrl(testVolume.Client,
-		"Slipknot - Duality.flac"))
+	mux.HandleFunc("GET /v1/tracks", listTracks(repo))
+	mux.HandleFunc("POST /v1/tracks", uploadTrack(p, tmpDir))
+	mux.HandleFunc("GET /v1/tracks/{track}/stream",
+		streamTrack(repo, store))
 
 	addr := ":8080"
 	if v := os.Getenv("ADDR"); v != "" {
 		addr = v
 	}
-
 	server := &http.Server{Addr: addr, Handler: mux}
 
+	errc := make(chan error, 1)
 	go func() {
 		slog.Info("listening", "addr", addr)
-		if err := server.ListenAndServe(); err != nil &&
-			err != http.ErrServerClosed {
-			slog.Error("server", "error", err)
-			os.Exit(1)
-		}
+		errc <- server.ListenAndServe()
 	}()
 
-	<-ctx.Done()
-	slog.Info("shutting down")
-
-	err = testVolume.Delete(context.Background())
-	if err != nil {
-		slog.Error("deleting test volume", "error", err)
+	select {
+	case err := <-errc:
+		return err
+	case <-ctx.Done():
 	}
+	slog.Info("shutting down")
 
 	shutdownCtx, cancel := context.WithTimeout(
 		context.Background(), 5*time.Second)
 	defer cancel()
-
-	if err := server.Shutdown(shutdownCtx); err != nil {
-		slog.Error("shutdown", "error", err)
+	err = server.Shutdown(shutdownCtx)
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
 	}
-}
-
-type Lister interface {
-	List(
-		ctx context.Context, prefix string,
-	) ([]string, error)
-}
-
-func listTracks(client Lister) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		keys, err := client.List(r.Context(), r.URL.Query().Get("prefix"))
-		if err != nil {
-			slog.Error("listing tracks", "error", err)
-			http.Error(w, "failed to list tracks",
-				http.StatusInternalServerError)
-			return
-		}
-		if keys == nil {
-			keys = []string{}
-		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(keys); err != nil {
-			slog.Error("encoding tracks", "error", err)
-		}
-	}
-}
-
-type URLer interface {
-	PresignedGetURL(ctx context.Context, key string,
-		expiry time.Duration) (string, error)
-}
-
-func getUrl(client URLer, key string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		url, err := client.PresignedGetURL(r.Context(), key, time.Minute)
-		if err != nil {
-			slog.Error("getting presigned URL", "error", err)
-			http.Error(w, "failed to get presigned URL",
-				http.StatusInternalServerError)
-			return
-		}
-		w.Header().Set("Content-Type", "text/plain")
-		w.Write([]byte(url))
-	}
+	return err
 }
