@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func internalError(w http.ResponseWriter, msg string, err error) {
 	writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", msg)
 }
 
-func listTracks(repo catalog.TrackLister) http.HandlerFunc {
+func ListTracks(repo catalog.TrackLister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tracks, err := repo.ListTracks(r.Context())
 		if err != nil {
@@ -71,7 +71,7 @@ func listTracks(repo catalog.TrackLister) http.HandlerFunc {
 
 // uploadTrack takes a multipart form with the audio in its "file" field,
 // copies it to a temporary file and runs the pipeline on it.
-func uploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
+func UploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 		tmp, err := receiveFile(r, tmpDir)
@@ -159,7 +159,7 @@ type streamURL struct {
 
 // streamTrack returns a presigned URL for the track's audio. The browser
 // streams from storage directly, with Range requests for seeking.
-func streamTrack(
+func StreamTrack(
 	repo catalog.TrackRepository, blobs blobFinder,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
