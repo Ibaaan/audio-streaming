@@ -63,7 +63,7 @@ func (l *Library) save(
 		return catalog.Track{}, err
 	}
 
-	track, err := findOrCreateTrack(ctx, tx, e, artist)
+	track, err := addNewTrack(ctx, tx, e, artist)
 	if err != nil {
 		return track, err
 	}
@@ -84,7 +84,7 @@ func (l *Library) save(
 	return track, nil
 }
 
-func findOrCreateTrack(
+func addNewTrack(
 	ctx context.Context,
 	tx catalog.Repository,
 	e entry,

@@ -76,8 +76,7 @@ func UploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 		tmp, err := receiveFile(r, tmpDir)
 		if err != nil {
-			var tooBig *http.MaxBytesError
-			if errors.As(err, &tooBig) {
+			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 				writeError(w, http.StatusRequestEntityTooLarge,
 					"INVALID_PARAMETER", "file is larger than 1 GiB")
 				return
@@ -159,9 +158,7 @@ type streamURL struct {
 
 // streamTrack returns a presigned URL for the track's audio. The browser
 // streams from storage directly, with Range requests for seeking.
-func StreamTrack(
-	repo catalog.TrackRepository, blobs blobFinder,
-) http.HandlerFunc {
+func StreamTrack(repo catalog.TrackRepository, blobs blobFinder) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(r.PathValue("track"))
 		if err != nil {
