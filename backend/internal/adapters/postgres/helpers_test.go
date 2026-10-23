@@ -15,6 +15,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
 	"audio-streaming/internal/catalog"
+	"audio-streaming/internal/env"
 )
 
 const (
@@ -28,9 +29,9 @@ func startTestDB() (*pgx.Conn, error) {
 	ctx := context.Background()
 
 	ctr, err := tcpostgres.Run(ctx, testImage,
-		tcpostgres.WithDatabase("audio_test"),
-		tcpostgres.WithUsername("audio"),
-		tcpostgres.WithPassword("audio"),
+		tcpostgres.WithDatabase(env.MustGet("TEST_POSTGRES_DB")),
+		tcpostgres.WithUsername(env.MustGet("TEST_POSTGRES_USER")),
+		tcpostgres.WithPassword(env.MustGet("TEST_POSTGRES_PASSWORD")),
 		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {

@@ -5,12 +5,13 @@ import (
 	_ "embed"
 	"fmt"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"audio-streaming/internal/env"
 )
 
 type Config struct {
@@ -21,21 +22,16 @@ type Config struct {
 	dbname string
 }
 
+// ConfigFromEnv reads the connection settings from the environment. It
+// panics if any of them is unset, so a misconfigured server never starts.
 func ConfigFromEnv() Config {
 	return Config{
-		user:   getEnv("POSTGRES_USER", "audio"),
-		pass:   getEnv("POSTGRES_PASSWORD", "audio"),
-		host:   getEnv("POSTGRES_HOST", "localhost"),
-		port:   getEnv("POSTGRES_PORT", "5432"),
-		dbname: getEnv("POSTGRES_DB", "audio"),
+		user:   env.MustGet("POSTGRES_USER"),
+		pass:   env.MustGet("POSTGRES_PASSWORD"),
+		host:   env.MustGet("POSTGRES_HOST"),
+		port:   env.MustGet("POSTGRES_PORT"),
+		dbname: env.MustGet("POSTGRES_DB"),
 	}
-}
-
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }
 
 func Open(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {

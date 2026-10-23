@@ -1,6 +1,6 @@
 package s3store
 
-import "os"
+import "audio-streaming/internal/env"
 
 type Config struct {
 	endpoint  string
@@ -10,19 +10,14 @@ type Config struct {
 	bucket    string
 }
 
+// ConfigFromEnv reads the storage settings from the environment. It panics
+// if any of them is unset, so a misconfigured server never starts.
 func ConfigFromEnv() Config {
 	return Config{
-		endpoint:  getEnv("MINIO_ENDPOINT", "localhost:8333"),
-		accessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
-		secretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),
-		useSSL:    getEnv("MINIO_USE_SSL", "false") == "true",
-		bucket:    getEnv("MINIO_BUCKET", "audio"),
+		endpoint:  env.MustGet("MINIO_ENDPOINT"),
+		accessKey: env.MustGet("MINIO_ACCESS_KEY"),
+		secretKey: env.MustGet("MINIO_SECRET_KEY"),
+		useSSL:    env.MustGet("MINIO_USE_SSL") == "true",
+		bucket:    env.MustGet("MINIO_BUCKET"),
 	}
-}
-
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
 }

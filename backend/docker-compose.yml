@@ -14,9 +14,9 @@ services:
     image: postgres:18.6-alpine
     container_name: audio-streaming-postgres
     environment:
-      POSTGRES_USER: ${PG_USER}
-      POSTGRES_PASSWORD: ${PG_PASSWORD}
-      POSTGRES_DB: ${PG_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     volumes:
@@ -34,9 +34,9 @@ services:
     container_name: audio-streaming-postgres-test
     profiles: ["test"]
     environment:
-      POSTGRES_USER: ${TEST_PG_USER}
-      POSTGRES_PASSWORD: ${TEST_PG_PASSWORD}
-      POSTGRES_DB: ${TEST_PG_DB}
+      POSTGRES_USER: ${TEST_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${TEST_POSTGRES_DB}
     ports:
       - "5433:5432"
     tmpfs:
