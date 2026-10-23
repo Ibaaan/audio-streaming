@@ -17,6 +17,7 @@ import (
 
 	"audio-streaming/internal/adapters/postgres"
 	"audio-streaming/internal/catalog"
+	"audio-streaming/internal/env"
 )
 
 const (
@@ -30,14 +31,13 @@ func startTestDB() (*pgxpool.Pool, error) {
 	ctx := context.Background()
 
 	ctr, err := tcpostgres.Run(ctx, testImage,
-		tcpostgres.WithDatabase("audio_test"),
-		tcpostgres.WithUsername("audio"),
-		tcpostgres.WithPassword("audio"),
+		tcpostgres.WithDatabase(env.MustGet("TEST_POSTGRES_DB")),
+		tcpostgres.WithUsername(env.MustGet("TEST_POSTGRES_USER")),
+		tcpostgres.WithPassword(env.MustGet("TEST_POSTGRES_PASSWORD")),
 		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("starting postgres container "+
-			"(is docker running?): %w", err)
+		return nil, fmt.Errorf("starting postgres container (is docker running?): %w", err)
 	}
 
 	dsn, err := ctr.ConnectionString(ctx, "sslmode=disable")
@@ -99,8 +99,7 @@ func countRows(t *testing.T, table string) int {
 	pool, err := testPool()
 	require.NoError(t, err, "test database")
 	var n int
-	err = pool.QueryRow(context.Background(),
-		`SELECT count(*) FROM `+table).Scan(&n)
+	err = pool.QueryRow(context.Background(), `SELECT count(*) FROM `+table).Scan(&n)
 	require.NoError(t, err, "count %s", table)
 	return n
 }
@@ -114,7 +113,7 @@ func TestDBSaveCommitsTrack(t *testing.T) {
 	track, err := lib.Save(ctx, rec, cover)
 
 	require.NoError(t, err)
-	gotTrack, err := repo.GetTrack(ctx, rec.TrackId)
+	gotTrack, err := repo.GetTrack(ctx, rec.TrackID)
 	require.NoError(t, err, "GetTrack")
 	artist, err := repo.FindArtistByName(ctx, "Slipknot")
 	require.NoError(t, err, "FindArtistByName")
@@ -126,10 +125,10 @@ func TestDBSaveCommitsTrack(t *testing.T) {
 	img, err := repo.GetImage(ctx, *album.CoverImageID)
 	require.NoError(t, err, "GetImage")
 	albumTrack := selectRow[catalog.AlbumTrack](t,
-		`SELECT * FROM album_tracks WHERE track_id = $1`, rec.TrackId)
+		`SELECT * FROM album_tracks WHERE track_id = $1`, rec.TrackID)
 
 	assert.Equal(t, track, gotTrack, "track")
-	assert.Equal(t, rec.TrackId, byArtist.ID, "track artist")
+	assert.Equal(t, rec.TrackID, byArtist.ID, "track artist")
 	assert.Equal(t, ptr(int16(2004)), album.ReleaseYear, "release year")
 	assert.Equal(t, catalog.Image{
 		ID:             img.ID,
@@ -142,7 +141,7 @@ func TestDBSaveCommitsTrack(t *testing.T) {
 	}, img, "cover")
 	assert.Equal(t, catalog.AlbumTrack{
 		AlbumID: album.ID,
-		TrackID: rec.TrackId,
+		TrackID: rec.TrackID,
 		Quality: catalog.QualityLossless,
 		DiscNo:  1,
 		TrackNo: 2,
@@ -171,7 +170,7 @@ func TestDBSaveRejectsCommittedTrack(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), rec, nil)
 
-	assert.ErrorIs(t, err, ErrTrackExists)
+	require.ErrorIs(t, err, ErrTrackExists)
 	assert.Equal(t, 1, countRows(t, "tracks"))
 }
 
@@ -187,8 +186,8 @@ func TestDBSaveRollsBackOnFailure(t *testing.T) {
 	_, err := lib.Save(context.Background(), rec, nil)
 
 	require.Error(t, err)
-	_, err = repo.GetTrack(context.Background(), rec.TrackId)
-	assert.ErrorIs(t, err, catalog.ErrNotFound, "track")
+	_, err = repo.GetTrack(context.Background(), rec.TrackID)
+	require.ErrorIs(t, err, catalog.ErrNotFound, "track")
 	_, err = repo.FindArtistByName(context.Background(), "Corey Taylor")
 	assert.ErrorIs(t, err, catalog.ErrNotFound, "artist")
 }

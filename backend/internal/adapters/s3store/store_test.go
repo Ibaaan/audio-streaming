@@ -1,6 +1,6 @@
 //go:build integration
 
-package storage
+package s3store
 
 import (
 	"context"
@@ -23,8 +23,7 @@ func newTestClient(t *testing.T) *Store {
 
 	cfg.bucket = fmt.Sprintf("it-%d", time.Now().UnixNano())
 
-	ctx, cancel := context.WithTimeout(context.Background(),
-		10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	c, err := New(ctx, cfg)
 	require.NoError(t, err, "NewClient")
@@ -35,8 +34,7 @@ func newTestClient(t *testing.T) *Store {
 		opts := minio.ListObjectsOptions{Recursive: true}
 		for obj := range c.mc.ListObjects(ctx, c.bucket, opts) {
 			if obj.Err == nil {
-				_ = c.mc.RemoveObject(ctx, c.bucket, obj.Key,
-					minio.RemoveObjectOptions{})
+				_ = c.mc.RemoveObject(ctx, c.bucket, obj.Key, minio.RemoveObjectOptions{})
 			}
 		}
 		if err := c.mc.RemoveBucket(ctx, c.bucket); err != nil {
@@ -74,8 +72,7 @@ func TestList(t *testing.T) {
 	keys, err := c.List(context.Background(), "")
 
 	require.NoError(t, err)
-	assert.ElementsMatch(t,
-		[]string{"covers/a.jpg", "songs/a.mp3", "songs/b.mp3"}, keys)
+	assert.ElementsMatch(t, []string{"covers/a.jpg", "songs/a.mp3", "songs/b.mp3"}, keys)
 }
 
 func TestListWithPrefix(t *testing.T) {
@@ -129,9 +126,11 @@ func TestPresignedGetURL(t *testing.T) {
 	u, err := c.PresignedGetURL(context.Background(), "track.txt", time.Minute)
 
 	require.NoError(t, err)
-	resp, err := http.Get(u)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, u, nil)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
 	got, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode, "body: %s", got)

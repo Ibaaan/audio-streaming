@@ -23,10 +23,7 @@ func (r *Repository) AddImage(ctx context.Context, img *catalog.Image) error {
 
 const selectImageQuery = `SELECT * FROM images WHERE id = $1`
 
-func (r *Repository) GetImage(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Image, error) {
+func (r *Repository) GetImage(ctx context.Context, id uuid.UUID) (catalog.Image, error) {
 	return queryOne[catalog.Image](ctx, r.dbtx, selectImageQuery, id)
 }
 
@@ -38,6 +35,5 @@ func (r *Repository) FindImageByPath(
 	ctx context.Context,
 	storagePath string,
 ) (catalog.Image, error) {
-	return queryOne[catalog.Image](ctx, r.dbtx, selectImageByPathQuery,
-		storagePath)
+	return queryOne[catalog.Image](ctx, r.dbtx, selectImageByPathQuery, storagePath)
 }

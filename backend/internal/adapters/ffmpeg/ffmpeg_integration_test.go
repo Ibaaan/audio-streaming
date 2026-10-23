@@ -31,15 +31,14 @@ func gen(t *testing.T, name string, args ...string) string {
 	t.Helper()
 	out := filepath.Join(t.TempDir(), name)
 	args = append([]string{"-nostdin", "-loglevel", "error", "-y"}, args...)
-	cmd := exec.Command(newTestFFmpeg().ffmpeg, append(args, out)...)
+	cmd := exec.CommandContext(t.Context(), newTestFFmpeg().ffmpeg, append(args, out)...)
 	msg, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(msg))
 	return out
 }
 
 // sines makes a 2-second source with one sine per channel.
-func sines(t *testing.T, name, layout string, rate string,
-	extra ...string) string {
+func sines(t *testing.T, name, layout string, rate string, extra ...string) string {
 	t.Helper()
 	exprs := map[string]string{
 		"mono":   "0.5*sin(440*2*PI*t)",
@@ -50,8 +49,7 @@ func sines(t *testing.T, name, layout string, rate string,
 	}
 	src := "aevalsrc=" + exprs[layout] +
 		":c=" + layout + ":s=" + rate + ":d=2"
-	return gen(t, name, append([]string{"-f", "lavfi", "-i", src},
-		extra...)...)
+	return gen(t, name, append([]string{"-f", "lavfi", "-i", src}, extra...)...)
 }
 
 func readFloats(t *testing.T, r audio.BlockReader) []float32 {
@@ -77,8 +75,7 @@ func readPCM16(t *testing.T, path string) []int16 {
 	data, err := io.ReadAll(r)
 	require.NoError(t, err)
 	out := make([]int16, len(data)/2)
-	require.NoError(t, binary.Read(bytes.NewReader(data),
-		binary.LittleEndian, out))
+	require.NoError(t, binary.Read(bytes.NewReader(data), binary.LittleEndian, out))
 	return out
 }
 
@@ -114,8 +111,7 @@ func TestProbeMP3(t *testing.T) {
 // scale has to match dsp.Quantizer's, and aresample must be a no-op at
 // equal rates. Plan.OnGrid relies on both.
 func TestOpenStereo16IsBitExact(t *testing.T) {
-	path := sines(t, "in.flac", "stereo", "44100",
-		"-c:a", "flac", "-sample_fmt", "s16")
+	path := sines(t, "in.flac", "stereo", "44100", "-c:a", "flac", "-sample_fmt", "s16")
 	want := readPCM16(t, path)
 	spec := audio.DecodeSpec{SampleRate: 44100}
 
@@ -130,8 +126,7 @@ func TestOpenStereo16IsBitExact(t *testing.T) {
 }
 
 func TestOpenMonoIsDuplicated(t *testing.T) {
-	path := sines(t, "in.flac", "mono", "44100",
-		"-c:a", "flac", "-sample_fmt", "s16")
+	path := sines(t, "in.flac", "mono", "44100", "-c:a", "flac", "-sample_fmt", "s16")
 	mono := readPCM16(t, path)
 	m, err := dsp.MixMatrix(1, "mono")
 	require.NoError(t, err)
@@ -177,8 +172,7 @@ func TestOpenMissingFile(t *testing.T) {
 
 func TestExtract(t *testing.T) {
 	audio := sines(t, "a.flac", "stereo", "44100", "-c:a", "flac")
-	cover := gen(t, "c.png",
-		"-f", "lavfi", "-i", "color=c=red:s=8x8", "-frames:v", "1")
+	cover := gen(t, "c.png", "-f", "lavfi", "-i", "color=c=red:s=8x8", "-frames:v", "1")
 	path := gen(t, "tagged.flac",
 		"-i", audio, "-i", cover, "-map", "0:a", "-map", "1:v",
 		"-c", "copy", "-disposition:v", "attached_pic",

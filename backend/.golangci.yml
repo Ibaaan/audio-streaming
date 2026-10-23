@@ -3,6 +3,12 @@ version: "2"
 linters:
   enable:
     - lll
+    - testifylint
+    - errorlint
+    - noctx
+    - bodyclose
+    - sqlclosecheck
+    - misspell
 
   settings:
     lll:

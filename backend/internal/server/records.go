@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bytes"
@@ -18,23 +18,23 @@ import (
 	"audio-streaming/internal/service"
 )
 
-// recordSaver adapts *service.Library to pipeline.RecordSaver. Library
-// only takes covers that are already stored, so recordSaver uploads
+// RecordSaver adapts *service.Library to pipeline.RecordSaver. Library
+// only takes covers that are already stored, so RecordSaver uploads
 // rec.Cover first, under its content hash so that identical covers share
 // one blob.
-type recordSaver struct {
-	lib   *service.Library
-	blobs pipeline.Uploader
+type RecordSaver struct {
+	Lib   *service.Library
+	Blobs pipeline.Uploader
 }
 
-var _ pipeline.RecordSaver = recordSaver{}
+var _ pipeline.RecordSaver = RecordSaver{}
 
-func (s recordSaver) Save(ctx context.Context, rec audio.Record) error {
+func (s RecordSaver) Save(ctx context.Context, rec audio.Record) error {
 	cover, err := s.uploadCover(ctx, rec.Cover)
 	if err != nil {
 		return err
 	}
-	_, err = s.lib.Save(ctx, rec, cover)
+	_, err = s.Lib.Save(ctx, rec, cover)
 	return err
 }
 
@@ -51,9 +51,7 @@ var coverFormats = map[string]struct {
 
 // uploadCover returns nil for no cover, or for one in a format the
 // catalog does not know.
-func (s recordSaver) uploadCover(
-	ctx context.Context, cover *audio.Cover,
-) (*catalog.Image, error) {
+func (s RecordSaver) uploadCover(ctx context.Context, cover *audio.Cover) (*catalog.Image, error) {
 	if cover == nil || len(cover.Data) == 0 {
 		return nil, nil
 	}
@@ -64,7 +62,7 @@ func (s recordSaver) uploadCover(
 
 	sum := sha256.Sum256(cover.Data)
 	key := "covers/" + hex.EncodeToString(sum[:]) + f.ext
-	_, err := s.blobs.Upload(ctx, key, bytes.NewReader(cover.Data),
+	_, err := s.Blobs.Upload(ctx, key, bytes.NewReader(cover.Data),
 		int64(len(cover.Data)), cover.MIMEType)
 	if err != nil {
 		return nil, err
@@ -84,19 +82,17 @@ func (s recordSaver) uploadCover(
 // exist. Run does not call them yet.
 var errNotImplemented = errors.New("not implemented")
 
-type noEncoder struct{}
+type NoEncoder struct{}
 
-func (noEncoder) Encode(
+func (NoEncoder) Encode(
 	ctx context.Context, pcm io.Reader,
 	opt audio.EncodeOptions, dstPath string,
 ) error {
 	return errNotImplemented
 }
 
-type noVerifier struct{}
+type NoVerifier struct{}
 
-func (noVerifier) Verify(path string, exp audio.Expectations) (
-	audio.Report, error,
-) {
+func (NoVerifier) Verify(path string, exp audio.Expectations) (audio.Report, error) {
 	return audio.Report{}, errNotImplemented
 }

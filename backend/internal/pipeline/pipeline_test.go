@@ -11,20 +11,15 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	s3store "audio-streaming/internal/adapters/s3store"
 	"audio-streaming/internal/audio"
 )
-
-var _ Uploader = (*s3store.Store)(nil)
 
 type fakeDecoder struct {
 	info audio.SourceInfo
 	err  error
 }
 
-func (d *fakeDecoder) Probe(ctx context.Context, path string) (
-	audio.SourceInfo, error,
-) {
+func (d *fakeDecoder) Probe(ctx context.Context, path string) (audio.SourceInfo, error) {
 	return d.info, d.err
 }
 
@@ -34,9 +29,7 @@ func (d *fakeDecoder) Open(
 	return nil, errors.New("not implemented")
 }
 
-func (d *fakeDecoder) OpenPCM16(ctx context.Context, path string) (
-	io.ReadCloser, error,
-) {
+func (d *fakeDecoder) OpenPCM16(ctx context.Context, path string) (io.ReadCloser, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -45,9 +38,7 @@ type fakeMeta struct {
 	cover *audio.Cover
 }
 
-func (m fakeMeta) Extract(ctx context.Context, path string) (
-	audio.Tags, *audio.Cover, error,
-) {
+func (m fakeMeta) Extract(ctx context.Context, path string) (audio.Tags, *audio.Cover, error) {
 	return m.tags, m.cover, nil
 }
 
@@ -62,9 +53,7 @@ func (fakeEncoder) Encode(
 
 type fakeVerifier struct{}
 
-func (fakeVerifier) Verify(path string, exp audio.Expectations) (
-	audio.Report, error,
-) {
+func (fakeVerifier) Verify(path string, exp audio.Expectations) (audio.Report, error) {
 	return audio.Report{}, errors.New("not implemented")
 }
 
@@ -154,7 +143,7 @@ func TestRunUploadsAudioAndSavesRecord(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, env.records.saved, 1)
 	rec := env.records.saved[0]
-	key := "audio/" + rec.TrackId.String() + ".flac"
+	key := "audio/" + rec.TrackID.String() + ".flac"
 	require.Contains(t, env.blobs.blobs, key)
 	assert.Equal(t, audioData, env.blobs.blobs[key].data)
 	assert.Equal(t, "audio/flac", env.blobs.blobs[key].contentType)
@@ -192,7 +181,7 @@ func TestRunRejectsEmptyFile(t *testing.T) {
 
 	err := env.p.Run(context.Background(), path)
 
-	assert.ErrorIs(t, err, ErrInvalidSource)
+	require.ErrorIs(t, err, ErrInvalidSource)
 	assert.Empty(t, env.blobs.blobs)
 	assert.Empty(t, env.records.saved)
 }
@@ -204,7 +193,7 @@ func TestRunRejectsUnprobeableFile(t *testing.T) {
 
 	err := env.p.Run(context.Background(), path)
 
-	assert.ErrorIs(t, err, ErrInvalidSource)
+	require.ErrorIs(t, err, ErrInvalidSource)
 	assert.Empty(t, env.blobs.blobs)
 	assert.Empty(t, env.records.saved)
 }

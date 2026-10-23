@@ -23,9 +23,7 @@ var coverMIME = map[string]string{
 
 // Extract reads the tags and the embedded cover, if any. A cover in a
 // format we don't recognise is skipped.
-func (f *FFmpeg) Extract(ctx context.Context, path string) (
-	audio.Tags, *audio.Cover, error,
-) {
+func (f *FFmpeg) Extract(ctx context.Context, path string) (audio.Tags, *audio.Cover, error) {
 	p, err := f.probe(ctx, path)
 	if err != nil {
 		return audio.Tags{}, nil, err
@@ -103,9 +101,7 @@ func coverStream(p probeOutput) (probeStream, bool) {
 	return probeStream{}, false
 }
 
-func (f *FFmpeg) cover(
-	ctx context.Context, path string, p probeOutput,
-) (*audio.Cover, error) {
+func (f *FFmpeg) cover(ctx context.Context, path string, p probeOutput) (*audio.Cover, error) {
 	s, ok := coverStream(p)
 	if !ok {
 		return nil, nil

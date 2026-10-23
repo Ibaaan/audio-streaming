@@ -8,7 +8,7 @@ import (
 
 // represent the audio metadata
 type Record struct {
-	TrackId    uuid.UUID
+	TrackID    uuid.UUID
 	SourceInfo SourceInfo
 	Tags       Tags
 	Cover      *Cover // nil if the file has no embedded artwork

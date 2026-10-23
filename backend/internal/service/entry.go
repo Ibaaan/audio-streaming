@@ -40,7 +40,7 @@ type albumEntry struct {
 func newEntry(rec audio.Record, cover *catalog.Image) (entry, error) {
 	tags := rec.Tags
 	e := entry{
-		trackID: rec.TrackId,
+		trackID: rec.TrackID,
 		title:   strings.TrimSpace(tags.Title),
 		artist:  strings.TrimSpace(tags.Artist),
 	}
@@ -56,8 +56,7 @@ func newEntry(rec audio.Record, cover *catalog.Image) (entry, error) {
 
 	ms := rec.Duration().Milliseconds()
 	if ms <= 0 || ms > math.MaxInt32 {
-		return entry{}, fmt.Errorf("%w: duration %dms out of range",
-			ErrInvalidRecord, ms)
+		return entry{}, fmt.Errorf("%w: duration %dms out of range", ErrInvalidRecord, ms)
 	}
 	e.durationMs = int32(ms)
 
@@ -79,8 +78,7 @@ func newEntry(rec audio.Record, cover *catalog.Image) (entry, error) {
 		cover:       cover,
 	}
 	if cover != nil && cover.StoragePath == "" {
-		return entry{}, fmt.Errorf("%w: cover without storage path",
-			ErrInvalidRecord)
+		return entry{}, fmt.Errorf("%w: cover without storage path", ErrInvalidRecord)
 	}
 	if album.artist == "" {
 		album.artist = e.artist

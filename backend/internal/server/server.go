@@ -1,32 +1,20 @@
-package main
+package server
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"net/http"
 	"os"
-	"os/signal"
 	"time"
 
 	"audio-streaming/internal/adapters/ffmpeg"
 	"audio-streaming/internal/adapters/postgres"
-	s3store "audio-streaming/internal/adapters/s3store"
+	"audio-streaming/internal/adapters/s3store"
 	"audio-streaming/internal/pipeline"
 	"audio-streaming/internal/service"
 )
 
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-
-	if err := run(ctx); err != nil {
-		slog.Error("fatal", "error", err)
-		os.Exit(1)
-	}
-}
-
-func run(ctx context.Context) error {
+func Run(ctx context.Context) error {
 	pool, err := postgres.Open(ctx, postgres.ConfigFromEnv())
 	if err != nil {
 		return err
@@ -52,12 +40,12 @@ func run(ctx context.Context) error {
 	p, err := pipeline.New(pipeline.Deps{
 		Decoder:  ff,
 		Meta:     ff,
-		Encoder:  noEncoder{},
-		Verifier: noVerifier{},
+		Encoder:  NoEncoder{},
+		Verifier: NoVerifier{},
 		Blobs:    store,
-		Records: recordSaver{
-			lib:   service.NewLibrary(repo),
-			blobs: store,
+		Records: RecordSaver{
+			Lib:   service.NewLibrary(repo),
+			Blobs: store,
 		},
 	}, tmpDir)
 	if err != nil {
@@ -65,11 +53,10 @@ func run(ctx context.Context) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("GET /", http.FileServer(http.Dir("static")))
-	mux.HandleFunc("GET /v1/tracks", listTracks(repo))
-	mux.HandleFunc("POST /v1/tracks", uploadTrack(p, tmpDir))
-	mux.HandleFunc("GET /v1/tracks/{track}/stream",
-		streamTrack(repo, store))
+	mux.Handle("GET /", http.FileServer(http.Dir("../static")))
+	mux.HandleFunc("GET /v1/tracks", ListTracks(repo))
+	mux.HandleFunc("POST /v1/tracks", UploadTrack(p, tmpDir))
+	mux.HandleFunc("GET /v1/tracks/{track}/stream", StreamTrack(repo, store))
 
 	addr := ":8080"
 	if v := os.Getenv("ADDR"); v != "" {
@@ -90,12 +77,7 @@ func run(ctx context.Context) error {
 	}
 	slog.Info("shutting down")
 
-	shutdownCtx, cancel := context.WithTimeout(
-		context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	err = server.Shutdown(shutdownCtx)
-	if errors.Is(err, http.ErrServerClosed) {
-		return nil
-	}
-	return err
+	return server.Shutdown(shutdownCtx)
 }

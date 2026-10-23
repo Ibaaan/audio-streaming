@@ -78,7 +78,7 @@ func TestTruePeakBlockSizeDoesNotMatter(t *testing.T) {
 
 	got := chunked.Peak()
 
-	assert.Equal(t, whole.Peak(), got)
+	assert.InDelta(t, whole.Peak(), got, 1e-12)
 }
 
 func TestTruePeakChannelsAreSeparate(t *testing.T) {
@@ -94,7 +94,7 @@ func TestTruePeakChannelsAreSeparate(t *testing.T) {
 
 	got := m.Peak()
 
-	assert.Equal(t, mono.Peak(), got)
+	assert.InDelta(t, mono.Peak(), got, 1e-12)
 }
 
 // BenchmarkTruePeak measures one second of 44.1 kHz stereo per op.

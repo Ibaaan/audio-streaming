@@ -77,8 +77,7 @@ func (p *proc) wait() {
 	case p.ctx.Err() != nil:
 		p.err = p.ctx.Err()
 	case err != nil:
-		p.err = fmt.Errorf("ffmpeg: %w: %s", err,
-			bytes.TrimSpace(p.stderr.buf.Bytes()))
+		p.err = fmt.Errorf("ffmpeg: %w: %s", err, bytes.TrimSpace(p.stderr.buf.Bytes()))
 	}
 }
 

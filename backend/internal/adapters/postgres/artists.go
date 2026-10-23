@@ -22,10 +22,7 @@ func (r *Repository) AddArtist(ctx context.Context, a *catalog.Artist) error {
 
 const selectArtistQuery = `SELECT * FROM artists WHERE id = $1`
 
-func (r *Repository) GetArtist(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Artist, error) {
+func (r *Repository) GetArtist(ctx context.Context, id uuid.UUID) (catalog.Artist, error) {
 	return queryOne[catalog.Artist](ctx, r.dbtx, selectArtistQuery, id)
 }
 
@@ -38,10 +35,6 @@ ORDER BY created_at, id
 LIMIT 1`
 
 // FindArtistByName matches name case-insensitively.
-func (r *Repository) FindArtistByName(
-	ctx context.Context,
-	name string,
-) (catalog.Artist, error) {
-	return queryOne[catalog.Artist](ctx, r.dbtx, selectArtistByNameQuery,
-		name)
+func (r *Repository) FindArtistByName(ctx context.Context, name string) (catalog.Artist, error) {
+	return queryOne[catalog.Artist](ctx, r.dbtx, selectArtistByNameQuery, name)
 }

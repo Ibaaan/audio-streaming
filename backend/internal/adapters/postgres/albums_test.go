@@ -27,8 +27,7 @@ func TestAddAlbum(t *testing.T) {
 	err := repo.AddAlbum(context.Background(), &album)
 
 	require.NoError(t, err)
-	got := selectOne[catalog.Album](t, repo,
-		`SELECT * FROM albums WHERE id = $1`, album.ID)
+	got := selectOne[catalog.Album](t, repo, `SELECT * FROM albums WHERE id = $1`, album.ID)
 	assert.Equal(t, album, got)
 }
 

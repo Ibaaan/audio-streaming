@@ -5,15 +5,16 @@ import (
 	_ "embed"
 	"fmt"
 	"net/url"
-	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"audio-streaming/internal/env"
 )
 
-type config struct {
+type Config struct {
 	user   string
 	pass   string
 	host   string
@@ -21,24 +22,19 @@ type config struct {
 	dbname string
 }
 
-func ConfigFromEnv() config {
-	return config{
-		user:   getEnv("POSTGRES_USER", "audio"),
-		pass:   getEnv("POSTGRES_PASSWORD", "audio"),
-		host:   getEnv("POSTGRES_HOST", "localhost"),
-		port:   getEnv("POSTGRES_PORT", "5432"),
-		dbname: getEnv("POSTGRES_DB", "audio"),
+// ConfigFromEnv reads the connection settings from the environment. It
+// panics if any of them is unset, so a misconfigured server never starts.
+func ConfigFromEnv() Config {
+	return Config{
+		user:   env.MustGet("POSTGRES_USER"),
+		pass:   env.MustGet("POSTGRES_PASSWORD"),
+		host:   env.MustGet("POSTGRES_HOST"),
+		port:   env.MustGet("POSTGRES_PORT"),
+		dbname: env.MustGet("POSTGRES_DB"),
 	}
 }
 
-func getEnv(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
-
-func Open(ctx context.Context, cfg config) (*pgxpool.Pool, error) {
+func Open(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, generateConnStringPGSQL(cfg))
 	if err != nil {
 		return nil, fmt.Errorf("creating postgres pool: %w", err)
@@ -50,7 +46,7 @@ func Open(ctx context.Context, cfg config) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func generateConnStringPGSQL(cfg config) string {
+func generateConnStringPGSQL(cfg Config) string {
 	u := url.URL{
 		Scheme:   "postgres",
 		User:     url.UserPassword(cfg.user, cfg.pass),
@@ -65,8 +61,7 @@ func generateConnStringPGSQL(cfg config) string {
 // opens a savepoint, so transactions nest.
 type DBTX interface {
 	TxBeginner
-	Exec(ctx context.Context, sql string, args ...any) (
-		pgconn.CommandTag, error)
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
@@ -79,25 +74,20 @@ type TxBeginner interface {
 var (
 	_ DBTX       = (*pgxpool.Pool)(nil)
 	_ DBTX       = (*pgx.Conn)(nil)
-	_ DBTX       = (pgx.Tx)(nil)
+	_ DBTX       = pgx.Tx(nil)
 	_ TxBeginner = (*pgxpool.Pool)(nil)
 )
 
 // WithTransaction runs functions in order inside one transaction. If any fn
 // returns an error, the remaining fns are skipped and the transaction is
 // rolled back. If all succeed, the transaction is committed.
-func WithTransaction(
-	ctx context.Context,
-	txBeginner TxBeginner,
-	fun func(tx DBTX) error,
-) error {
+func WithTransaction(ctx context.Context, txBeginner TxBeginner, fun func(tx DBTX) error) error {
 	tx, err := txBeginner.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
-		rbCtx, cancel := context.WithTimeout(
-			context.WithoutCancel(ctx), 5*time.Second)
+		rbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = tx.Rollback(rbCtx)
 	}()

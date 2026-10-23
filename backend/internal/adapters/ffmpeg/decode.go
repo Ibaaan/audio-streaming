@@ -23,8 +23,7 @@ func (f *FFmpeg) Open(
 	ctx context.Context, path string, spec audio.DecodeSpec,
 ) (audio.BlockReader, error) {
 	if spec.SampleRate <= 0 {
-		return nil, fmt.Errorf("ffmpeg: invalid sample rate %d",
-			spec.SampleRate)
+		return nil, fmt.Errorf("ffmpeg: invalid sample rate %d", spec.SampleRate)
 	}
 	p, err := start(ctx, f.ffmpeg, decodeArgs(path, spec))
 	if err != nil {
@@ -34,11 +33,8 @@ func (f *FFmpeg) Open(
 }
 
 // OpenPCM16 streams path unchanged as 16-bit little-endian PCM.
-func (f *FFmpeg) OpenPCM16(ctx context.Context, path string) (
-	io.ReadCloser, error,
-) {
-	args := append(inputArgs(path),
-		"-map", "0:a:0", "-f", "s16le", "-c:a", "pcm_s16le", "-")
+func (f *FFmpeg) OpenPCM16(ctx context.Context, path string) (io.ReadCloser, error) {
+	args := append(inputArgs(path), "-map", "0:a:0", "-f", "s16le", "-c:a", "pcm_s16le", "-")
 	return start(ctx, f.ffmpeg, args)
 }
 
@@ -77,9 +73,7 @@ func newFloatReader(src io.ReadCloser, rate int) *floatReader {
 	}
 }
 
-func (r *floatReader) ReadBlock(ctx context.Context) (
-	audio.Block, error,
-) {
+func (r *floatReader) ReadBlock(ctx context.Context) (audio.Block, error) {
 	if err := ctx.Err(); err != nil {
 		return audio.Block{}, err
 	}
@@ -91,8 +85,7 @@ func (r *floatReader) ReadBlock(ctx context.Context) (
 		return audio.Block{}, err
 	}
 	if n%frameBytes != 0 {
-		return audio.Block{}, fmt.Errorf(
-			"ffmpeg: stream ends mid-frame (%d bytes)", n)
+		return audio.Block{}, fmt.Errorf("ffmpeg: stream ends mid-frame (%d bytes)", n)
 	}
 
 	samples := r.out[:n/4]

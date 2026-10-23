@@ -19,7 +19,7 @@ func newTestLibrary() (*Library, *fakeRepo) {
 
 func testRecord(title string) audio.Record {
 	return audio.Record{
-		TrackId: uuid.Must(uuid.NewV7()),
+		TrackID: uuid.Must(uuid.NewV7()),
 		SourceInfo: audio.SourceInfo{
 			Lossless:   true,
 			SampleRate: 44100,
@@ -83,8 +83,8 @@ func TestSaveUsesRecordTrackID(t *testing.T) {
 	track, err := lib.Save(context.Background(), rec, nil)
 
 	require.NoError(t, err)
-	assert.Equal(t, rec.TrackId, track.ID)
-	assert.Equal(t, rec.TrackId, repo.tracks[0].ID)
+	assert.Equal(t, rec.TrackID, track.ID)
+	assert.Equal(t, rec.TrackID, repo.tracks[0].ID)
 }
 
 func TestSaveReusesArtistAndAlbum(t *testing.T) {
@@ -110,7 +110,7 @@ func TestSaveRejectsExistingTrack(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), rec, nil)
 
-	assert.ErrorIs(t, err, ErrTrackExists)
+	require.ErrorIs(t, err, ErrTrackExists)
 	assert.Len(t, repo.tracks, 1)
 }
 
@@ -134,8 +134,7 @@ func TestSaveUsesAlbumArtistForAlbum(t *testing.T) {
 	_, err := lib.Save(context.Background(), rec, nil)
 
 	require.NoError(t, err)
-	albumArtist, err := repo.GetArtist(context.Background(),
-		repo.albumArtists[0].ArtistID)
+	albumArtist, err := repo.GetArtist(context.Background(), repo.albumArtists[0].ArtistID)
 	require.NoError(t, err, "GetArtist")
 	assert.Equal(t, "Various Artists", albumArtist.Name)
 }
@@ -170,8 +169,7 @@ func TestSaveAddsCoverWithNewAlbum(t *testing.T) {
 
 func TestSaveSharesCoverBetweenAlbums(t *testing.T) {
 	lib, repo := newTestLibrary()
-	_, err := lib.Save(context.Background(), testRecord("Duality"),
-		testCover())
+	_, err := lib.Save(context.Background(), testRecord("Duality"), testCover())
 	require.NoError(t, err, "first Save")
 	rec := testRecord("Duality (Live)")
 	rec.Tags.Album = "Vol. 3 (Special Edition)"
@@ -181,8 +179,7 @@ func TestSaveSharesCoverBetweenAlbums(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, repo.albums, 2)
 	assert.Len(t, repo.images, 1)
-	assert.Equal(t, repo.albums[0].CoverImageID,
-		repo.albums[1].CoverImageID)
+	assert.Equal(t, repo.albums[0].CoverImageID, repo.albums[1].CoverImageID)
 }
 
 func TestSaveSkipsCoverForExistingAlbum(t *testing.T) {
@@ -205,7 +202,7 @@ func TestSaveRejectsCoverWithoutPath(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), testRecord("Duality"), cover)
 
-	assert.ErrorIs(t, err, ErrInvalidRecord)
+	require.ErrorIs(t, err, ErrInvalidRecord)
 	assert.Empty(t, repo.tracks)
 }
 
@@ -215,6 +212,6 @@ func TestSaveRejectsInvalidRecord(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), rec, nil)
 
-	assert.ErrorIs(t, err, ErrInvalidRecord)
+	require.ErrorIs(t, err, ErrInvalidRecord)
 	assert.Empty(t, repo.artists)
 }

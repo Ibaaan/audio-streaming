@@ -23,10 +23,7 @@ func (r *Repository) AddTrack(ctx context.Context, t *catalog.Track) error {
 
 const selectTrackQuery = `SELECT * FROM tracks WHERE id = $1`
 
-func (r *Repository) GetTrack(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Track, error) {
+func (r *Repository) GetTrack(ctx context.Context, id uuid.UUID) (catalog.Track, error) {
 	return queryOne[catalog.Track](ctx, r.dbtx, selectTrackQuery, id)
 }
 
@@ -34,10 +31,7 @@ const insertTrackArtistQuery = `
 INSERT INTO track_artists (track_id, artist_id, role, position)
 VALUES ($1, $2, $3, $4)`
 
-func (r *Repository) AddTrackArtist(
-	ctx context.Context,
-	ta catalog.TrackArtist,
-) error {
+func (r *Repository) AddTrackArtist(ctx context.Context, ta catalog.TrackArtist) error {
 	_, err := r.dbtx.Exec(ctx, insertTrackArtistQuery,
 		ta.TrackID, ta.ArtistID, ta.Role, ta.Position)
 	return err
@@ -57,8 +51,7 @@ func (r *Repository) FindTrack(
 	title string,
 	artistID uuid.UUID,
 ) (catalog.Track, error) {
-	return queryOne[catalog.Track](ctx, r.dbtx, selectTrackByArtistQuery,
-		title, artistID)
+	return queryOne[catalog.Track](ctx, r.dbtx, selectTrackByArtistQuery, title, artistID)
 }
 
 // A track on several albums is listed with the oldest of them.
@@ -85,9 +78,7 @@ ORDER BY t.created_at DESC, t.id DESC`
 
 // ListTracks returns every track with its artists and album, newest
 // first.
-func (r *Repository) ListTracks(
-	ctx context.Context,
-) ([]catalog.TrackSummary, error) {
+func (r *Repository) ListTracks(ctx context.Context) ([]catalog.TrackSummary, error) {
 	rows, err := r.dbtx.Query(ctx, listTracksQuery)
 	if err != nil {
 		return nil, err

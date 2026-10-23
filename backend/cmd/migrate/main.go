@@ -13,8 +13,7 @@ import (
 )
 
 // Matches postgres.env used by docker-compose.yml.
-const defaultDatabaseURL = "postgres://audio:audio@localhost:5432/audio" +
-	"?sslmode=disable"
+const defaultDatabaseURL = "postgres://audio:audio@localhost:5432/audio?sslmode=disable"
 
 func main() {
 	dir := flag.String("dir", "migrations", "directory with .sql files")
@@ -49,8 +48,7 @@ func run(ctx context.Context, dir string) error {
 		return err
 	}
 
-	fmt.Printf("%d migration(s) applied, database up to date\n",
-		len(applied))
+	fmt.Printf("%d migration(s) applied, database up to date\n", len(applied))
 
 	return nil
 }

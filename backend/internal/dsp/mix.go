@@ -55,12 +55,10 @@ func MixMatrix(ch int, layout string) ([][]float64, error) {
 	}
 	names, ok := layouts[layout]
 	if !ok {
-		return nil, fmt.Errorf("dsp: unsupported channel layout %q (%d ch)",
-			layout, ch)
+		return nil, fmt.Errorf("dsp: unsupported channel layout %q (%d ch)", layout, ch)
 	}
 	if len(names) != ch {
-		return nil, fmt.Errorf("dsp: layout %q has %d channels, got %d",
-			layout, len(names), ch)
+		return nil, fmt.Errorf("dsp: layout %q has %d channels, got %d", layout, len(names), ch)
 	}
 
 	m := [][]float64{make([]float64, ch), make([]float64, ch)}

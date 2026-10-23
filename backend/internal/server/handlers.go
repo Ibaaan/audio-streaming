@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"context"
@@ -55,7 +55,7 @@ func internalError(w http.ResponseWriter, msg string, err error) {
 	writeError(w, http.StatusInternalServerError, "INTERNAL_ERROR", msg)
 }
 
-func listTracks(repo catalog.TrackLister) http.HandlerFunc {
+func ListTracks(repo catalog.TrackLister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tracks, err := repo.ListTracks(r.Context())
 		if err != nil {
@@ -71,19 +71,17 @@ func listTracks(repo catalog.TrackLister) http.HandlerFunc {
 
 // uploadTrack takes a multipart form with the audio in its "file" field,
 // copies it to a temporary file and runs the pipeline on it.
-func uploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
+func UploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 		tmp, err := receiveFile(r, tmpDir)
 		if err != nil {
-			var tooBig *http.MaxBytesError
-			if errors.As(err, &tooBig) {
+			if _, ok := errors.AsType[*http.MaxBytesError](err); ok {
 				writeError(w, http.StatusRequestEntityTooLarge,
 					"INVALID_PARAMETER", "file is larger than 1 GiB")
 				return
 			}
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				err.Error())
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", err.Error())
 			return
 		}
 		defer func() { _ = os.Remove(tmp) }()
@@ -94,14 +92,11 @@ func uploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
 			w.WriteHeader(http.StatusNoContent)
 		case errors.Is(err, pipeline.ErrInvalidSource):
 			slog.Info("rejected upload", "error", err)
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				"not a readable audio file")
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", "not a readable audio file")
 		case errors.Is(err, service.ErrInvalidRecord):
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				err.Error())
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", err.Error())
 		case errors.Is(err, service.ErrTrackExists):
-			writeError(w, http.StatusConflict, "ALREADY_EXISTS",
-				err.Error())
+			writeError(w, http.StatusConflict, "ALREADY_EXISTS", err.Error())
 		default:
 			internalError(w, "importing track", err)
 		}
@@ -118,7 +113,7 @@ func receiveFile(r *http.Request, dir string) (string, error) {
 	}
 	for {
 		part, err := mr.NextPart()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return "", errors.New(`missing "file" field`)
 		}
 		if err != nil {
@@ -147,8 +142,7 @@ func receiveFile(r *http.Request, dir string) (string, error) {
 
 type blobFinder interface {
 	List(ctx context.Context, prefix string) ([]string, error)
-	PresignedGetURL(ctx context.Context, key string,
-		expiry time.Duration) (string, error)
+	PresignedGetURL(ctx context.Context, key string, expiry time.Duration) (string, error)
 }
 
 type streamURL struct {
@@ -159,20 +153,16 @@ type streamURL struct {
 
 // streamTrack returns a presigned URL for the track's audio. The browser
 // streams from storage directly, with Range requests for seeking.
-func streamTrack(
-	repo catalog.TrackRepository, blobs blobFinder,
-) http.HandlerFunc {
+func StreamTrack(repo catalog.TrackRepository, blobs blobFinder) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(r.PathValue("track"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				"track must be a UUID")
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", "track must be a UUID")
 			return
 		}
 		_, err = repo.GetTrack(r.Context(), id)
 		if errors.Is(err, catalog.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "RESOURCE_NOT_FOUND",
-				"no such track")
+			writeError(w, http.StatusNotFound, "RESOURCE_NOT_FOUND", "no such track")
 			return
 		}
 		if err != nil {
@@ -201,9 +191,7 @@ func streamTrack(
 
 // audioKey finds the blob the pipeline stored for id. Its extension is
 // that of the uploaded file, so it is looked up by prefix.
-func audioKey(
-	ctx context.Context, blobs blobFinder, id uuid.UUID,
-) (string, error) {
+func audioKey(ctx context.Context, blobs blobFinder, id uuid.UUID) (string, error) {
 	prefix := "audio/" + id.String()
 	keys, err := blobs.List(ctx, prefix)
 	if err != nil {

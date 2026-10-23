@@ -15,6 +15,7 @@ import (
 	tcpostgres "github.com/testcontainers/testcontainers-go/modules/postgres"
 
 	"audio-streaming/internal/catalog"
+	"audio-streaming/internal/env"
 )
 
 const (
@@ -28,14 +29,13 @@ func startTestDB() (*pgx.Conn, error) {
 	ctx := context.Background()
 
 	ctr, err := tcpostgres.Run(ctx, testImage,
-		tcpostgres.WithDatabase("audio_test"),
-		tcpostgres.WithUsername("audio"),
-		tcpostgres.WithPassword("audio"),
+		tcpostgres.WithDatabase(env.MustGet("TEST_POSTGRES_DB")),
+		tcpostgres.WithUsername(env.MustGet("TEST_POSTGRES_USER")),
+		tcpostgres.WithPassword(env.MustGet("TEST_POSTGRES_PASSWORD")),
 		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("starting postgres container "+
-			"(is docker running?): %w", err)
+		return nil, fmt.Errorf("starting postgres container (is docker running?): %w", err)
 	}
 
 	dsn, err := ctr.ConnectionString(ctx, "sslmode=disable")
@@ -78,12 +78,7 @@ func newTestRepo(t *testing.T) *Repository {
 
 // selectOne reads back a single row with plain SQL, independent of the
 // repository's own readers.
-func selectOne[T any](
-	t *testing.T,
-	repo *Repository,
-	sql string,
-	args ...any,
-) T {
+func selectOne[T any](t *testing.T, repo *Repository, sql string, args ...any) T {
 	t.Helper()
 	rows, err := repo.dbtx.Query(context.Background(), sql, args...)
 	require.NoError(t, err, "Query")
@@ -106,36 +101,25 @@ func mustAddTrack(t *testing.T, repo catalog.TrackRepository) catalog.Track {
 		Title:      "Duality",
 		DurationMs: 252_000,
 	}
-	require.NoError(t, repo.AddTrack(context.Background(), &track),
-		"AddTrack")
+	require.NoError(t, repo.AddTrack(context.Background(), &track), "AddTrack")
 	return track
 }
 
-func mustAddArtist(
-	t *testing.T,
-	repo *Repository,
-	name string,
-) catalog.Artist {
+func mustAddArtist(t *testing.T, repo *Repository, name string) catalog.Artist {
 	t.Helper()
 	artist := catalog.Artist{ID: newID(t), Name: name}
-	require.NoError(t, repo.AddArtist(context.Background(), &artist),
-		"AddArtist")
+	require.NoError(t, repo.AddArtist(context.Background(), &artist), "AddArtist")
 	return artist
 }
 
-func mustAddAlbum(
-	t *testing.T,
-	repo *Repository,
-	title string,
-) catalog.Album {
+func mustAddAlbum(t *testing.T, repo *Repository, title string) catalog.Album {
 	t.Helper()
 	album := catalog.Album{
 		ID:        newID(t),
 		Title:     title,
 		AlbumType: catalog.AlbumTypeAlbum,
 	}
-	require.NoError(t, repo.AddAlbum(context.Background(), &album),
-		"AddAlbum")
+	require.NoError(t, repo.AddAlbum(context.Background(), &album), "AddAlbum")
 	return album
 }
 
@@ -162,8 +146,7 @@ func mustAddImage(t *testing.T, repo *Repository) catalog.Image {
 		StoragePath:    "covers/" + uuid.NewString() + ".jpg",
 		OriginalFormat: catalog.ImageFormatJPEG,
 	}
-	require.NoError(t, repo.AddImage(context.Background(), &image),
-		"AddImage")
+	require.NoError(t, repo.AddImage(context.Background(), &image), "AddImage")
 	return image
 }
 
