@@ -10,7 +10,7 @@ import (
 
 	"audio-streaming/internal/adapters/ffmpeg"
 	"audio-streaming/internal/adapters/postgres"
-	s3store "audio-streaming/internal/adapters/s3store"
+	"audio-streaming/internal/adapters/s3store"
 	"audio-streaming/internal/pipeline"
 	"audio-streaming/internal/service"
 )

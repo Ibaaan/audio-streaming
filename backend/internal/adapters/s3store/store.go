@@ -1,4 +1,4 @@
-package storage
+package s3store
 
 import (
 	"context"
@@ -15,7 +15,7 @@ type Store struct {
 	bucket string
 }
 
-func New(ctx context.Context, cfg config) (*Store, error) {
+func New(ctx context.Context, cfg Config) (*Store, error) {
 	mc, err := minio.New(cfg.endpoint, &minio.Options{
 		Creds: credentials.NewStaticV4(cfg.accessKey,
 			cfg.secretKey, ""),

@@ -1,4 +1,4 @@
-package storage
+package s3store
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type TestVolume struct {
 }
 
 func CreateTestVolume(
-	ctx context.Context, cfg config, dir string,
+	ctx context.Context, cfg Config, dir string,
 ) (*TestVolume, error) {
 	cfg.bucket = fmt.Sprintf("test-%d", time.Now().UnixNano())
 	c, err := New(ctx, cfg)

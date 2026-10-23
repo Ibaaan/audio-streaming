@@ -13,7 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type config struct {
+type Config struct {
 	user   string
 	pass   string
 	host   string
@@ -21,8 +21,8 @@ type config struct {
 	dbname string
 }
 
-func ConfigFromEnv() config {
-	return config{
+func ConfigFromEnv() Config {
+	return Config{
 		user:   getEnv("POSTGRES_USER", "audio"),
 		pass:   getEnv("POSTGRES_PASSWORD", "audio"),
 		host:   getEnv("POSTGRES_HOST", "localhost"),
@@ -38,7 +38,7 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
-func Open(ctx context.Context, cfg config) (*pgxpool.Pool, error) {
+func Open(ctx context.Context, cfg Config) (*pgxpool.Pool, error) {
 	pool, err := pgxpool.New(ctx, generateConnStringPGSQL(cfg))
 	if err != nil {
 		return nil, fmt.Errorf("creating postgres pool: %w", err)
@@ -50,7 +50,7 @@ func Open(ctx context.Context, cfg config) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func generateConnStringPGSQL(cfg config) string {
+func generateConnStringPGSQL(cfg Config) string {
 	u := url.URL{
 		Scheme:   "postgres",
 		User:     url.UserPassword(cfg.user, cfg.pass),
@@ -79,7 +79,7 @@ type TxBeginner interface {
 var (
 	_ DBTX       = (*pgxpool.Pool)(nil)
 	_ DBTX       = (*pgx.Conn)(nil)
-	_ DBTX       = (pgx.Tx)(nil)
+	_ DBTX       = pgx.Tx(nil)
 	_ TxBeginner = (*pgxpool.Pool)(nil)
 )
 

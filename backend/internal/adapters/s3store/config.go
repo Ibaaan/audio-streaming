@@ -1,8 +1,8 @@
-package storage
+package s3store
 
 import "os"
 
-type config struct {
+type Config struct {
 	endpoint  string
 	accessKey string
 	secretKey string
@@ -10,8 +10,8 @@ type config struct {
 	bucket    string
 }
 
-func ConfigFromEnv() config {
-	return config{
+func ConfigFromEnv() Config {
+	return Config{
 		endpoint:  getEnv("MINIO_ENDPOINT", "localhost:8333"),
 		accessKey: getEnv("MINIO_ACCESS_KEY", "minioadmin"),
 		secretKey: getEnv("MINIO_SECRET_KEY", "minioadmin"),

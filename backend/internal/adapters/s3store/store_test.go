@@ -1,6 +1,6 @@
 //go:build integration
 
-package storage
+package s3store
 
 import (
 	"context"
