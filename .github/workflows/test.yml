@@ -1,9 +1,6 @@
 name: tests
 
 on:
-  push:
-    branches: [master]
-    paths: ["backend/**", ".github/workflows/test.yml"]
   pull_request:
     paths: ["backend/**", ".github/workflows/test.yml"]
 
