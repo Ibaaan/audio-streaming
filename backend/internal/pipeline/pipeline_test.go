@@ -11,11 +11,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	s3store "audio-streaming/internal/adapters/s3store"
 	"audio-streaming/internal/audio"
 )
-
-var _ Uploader = (*s3store.Store)(nil)
 
 type fakeDecoder struct {
 	info audio.SourceInfo
