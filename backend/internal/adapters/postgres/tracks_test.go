@@ -25,8 +25,7 @@ func TestAddTrack(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.False(t, track.CreatedAt.IsZero(), "CreatedAt filled in")
-	got := selectOne[catalog.Track](t, repo,
-		`SELECT * FROM tracks WHERE id = $1`, track.ID)
+	got := selectOne[catalog.Track](t, repo, `SELECT * FROM tracks WHERE id = $1`, track.ID)
 	assert.Equal(t, track, got)
 }
 
@@ -120,9 +119,7 @@ func mustAddTrackArtist(
 		TrackID:  track.ID,
 		ArtistID: artist.ID,
 	}
-	require.NoError(t,
-		repo.AddTrackArtist(context.Background(), trackArtist),
-		"AddTrackArtist")
+	require.NoError(t, repo.AddTrackArtist(context.Background(), trackArtist), "AddTrackArtist")
 }
 
 func TestFindTrackIgnoresCase(t *testing.T) {

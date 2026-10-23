@@ -51,9 +51,7 @@ var coverFormats = map[string]struct {
 
 // uploadCover returns nil for no cover, or for one in a format the
 // catalog does not know.
-func (s RecordSaver) uploadCover(
-	ctx context.Context, cover *audio.Cover,
-) (*catalog.Image, error) {
+func (s RecordSaver) uploadCover(ctx context.Context, cover *audio.Cover) (*catalog.Image, error) {
 	if cover == nil || len(cover.Data) == 0 {
 		return nil, nil
 	}
@@ -95,8 +93,6 @@ func (NoEncoder) Encode(
 
 type NoVerifier struct{}
 
-func (NoVerifier) Verify(path string, exp audio.Expectations) (
-	audio.Report, error,
-) {
+func (NoVerifier) Verify(path string, exp audio.Expectations) (audio.Report, error) {
 	return audio.Report{}, errNotImplemented
 }

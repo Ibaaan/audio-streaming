@@ -17,8 +17,7 @@ type Store struct {
 
 func New(ctx context.Context, cfg Config) (*Store, error) {
 	mc, err := minio.New(cfg.endpoint, &minio.Options{
-		Creds: credentials.NewStaticV4(cfg.accessKey,
-			cfg.secretKey, ""),
+		Creds:  credentials.NewStaticV4(cfg.accessKey, cfg.secretKey, ""),
 		Secure: cfg.useSSL,
 	})
 	if err != nil {
@@ -61,9 +60,7 @@ func (c *Store) Upload(
 	return info.Size, nil
 }
 
-func (c *Store) List(
-	ctx context.Context, prefix string,
-) ([]string, error) {
+func (c *Store) List(ctx context.Context, prefix string) ([]string, error) {
 	var keys []string
 	opts := minio.ListObjectsOptions{Prefix: prefix, Recursive: true}
 	for obj := range c.mc.ListObjects(ctx, c.bucket, opts) {

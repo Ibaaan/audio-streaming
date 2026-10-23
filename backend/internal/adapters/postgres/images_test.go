@@ -25,8 +25,7 @@ func TestAddImage(t *testing.T) {
 	err := repo.AddImage(context.Background(), &image)
 
 	require.NoError(t, err)
-	got := selectOne[catalog.Image](t, repo,
-		`SELECT * FROM images WHERE id = $1`, image.ID)
+	got := selectOne[catalog.Image](t, repo, `SELECT * FROM images WHERE id = $1`, image.ID)
 	assert.Equal(t, image, got)
 }
 
@@ -58,8 +57,7 @@ func TestFindImageByPath(t *testing.T) {
 	repo := newTestRepo(t)
 	image := mustAddImage(t, repo)
 
-	got, err := repo.FindImageByPath(context.Background(),
-		image.StoragePath)
+	got, err := repo.FindImageByPath(context.Background(), image.StoragePath)
 
 	require.NoError(t, err)
 	assert.Equal(t, image, got)

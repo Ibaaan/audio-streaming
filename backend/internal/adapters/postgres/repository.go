@@ -28,10 +28,7 @@ var (
 // WithinTx runs fn with a repository bound to a new transaction and
 // commits if fn returns nil. On a repository that is already inside a
 // transaction it opens a savepoint instead. tx is a *Repository.
-func (r *Repository) WithinTx(
-	ctx context.Context,
-	fn func(tx catalog.Repository) error,
-) error {
+func (r *Repository) WithinTx(ctx context.Context, fn func(tx catalog.Repository) error) error {
 	return WithTransaction(ctx, r.dbtx, func(tx DBTX) error {
 		return fn(NewRepository(tx))
 	})
@@ -40,12 +37,7 @@ func (r *Repository) WithinTx(
 // queryOne runs sql and maps the single row it returns onto T by T's db
 // tags. Inserts use it too, through RETURNING *. No row is reported as
 // catalog.ErrNotFound.
-func queryOne[T any](
-	ctx context.Context,
-	dbtx DBTX,
-	sql string,
-	args ...any,
-) (T, error) {
+func queryOne[T any](ctx context.Context, dbtx DBTX, sql string, args ...any) (T, error) {
 	rows, err := dbtx.Query(ctx, sql, args...)
 	if err != nil {
 		var zero T

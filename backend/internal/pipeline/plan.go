@@ -30,8 +30,7 @@ type Plan struct {
 
 func MakePlan(src audio.SourceInfo) (Plan, error) {
 	if src.SampleRate <= 0 {
-		return Plan{}, fmt.Errorf("plan: invalid sample rate %d",
-			src.SampleRate)
+		return Plan{}, fmt.Errorf("plan: invalid sample rate %d", src.SampleRate)
 	}
 
 	mix, err := func(channels int) (Mix, error) {

@@ -12,8 +12,7 @@ import (
 // These tests run sh in place of ffmpeg to check process handling.
 
 func TestProcReadsStdout(t *testing.T) {
-	p, err := start(context.Background(), "sh",
-		[]string{"-c", "printf abc"})
+	p, err := start(context.Background(), "sh", []string{"-c", "printf abc"})
 	require.NoError(t, err)
 
 	got, err := io.ReadAll(p)
@@ -23,8 +22,7 @@ func TestProcReadsStdout(t *testing.T) {
 }
 
 func TestProcReportsFailure(t *testing.T) {
-	p, err := start(context.Background(), "sh",
-		[]string{"-c", "printf abc; echo boom >&2; exit 3"})
+	p, err := start(context.Background(), "sh", []string{"-c", "printf abc; echo boom >&2; exit 3"})
 	require.NoError(t, err)
 
 	_, err = io.ReadAll(p)
@@ -33,8 +31,7 @@ func TestProcReportsFailure(t *testing.T) {
 }
 
 func TestProcCloseStopsProcess(t *testing.T) {
-	p, err := start(context.Background(), "sh",
-		[]string{"-c", "exec yes"})
+	p, err := start(context.Background(), "sh", []string{"-c", "exec yes"})
 	require.NoError(t, err)
 	_, err = p.Read(make([]byte, 16))
 	require.NoError(t, err)

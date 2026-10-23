@@ -56,8 +56,7 @@ func Run(ctx context.Context) error {
 	mux.Handle("GET /", http.FileServer(http.Dir("../static")))
 	mux.HandleFunc("GET /v1/tracks", ListTracks(repo))
 	mux.HandleFunc("POST /v1/tracks", UploadTrack(p, tmpDir))
-	mux.HandleFunc("GET /v1/tracks/{track}/stream",
-		StreamTrack(repo, store))
+	mux.HandleFunc("GET /v1/tracks/{track}/stream", StreamTrack(repo, store))
 
 	addr := ":8080"
 	if v := os.Getenv("ADDR"); v != "" {
@@ -78,8 +77,7 @@ func Run(ctx context.Context) error {
 	}
 	slog.Info("shutting down")
 
-	shutdownCtx, cancel := context.WithTimeout(
-		context.Background(), 5*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	return server.Shutdown(shutdownCtx)
 }

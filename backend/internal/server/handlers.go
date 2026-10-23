@@ -81,8 +81,7 @@ func UploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
 					"INVALID_PARAMETER", "file is larger than 1 GiB")
 				return
 			}
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				err.Error())
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", err.Error())
 			return
 		}
 		defer func() { _ = os.Remove(tmp) }()
@@ -93,14 +92,11 @@ func UploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
 			w.WriteHeader(http.StatusNoContent)
 		case errors.Is(err, pipeline.ErrInvalidSource):
 			slog.Info("rejected upload", "error", err)
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				"not a readable audio file")
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", "not a readable audio file")
 		case errors.Is(err, service.ErrInvalidRecord):
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				err.Error())
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", err.Error())
 		case errors.Is(err, service.ErrTrackExists):
-			writeError(w, http.StatusConflict, "ALREADY_EXISTS",
-				err.Error())
+			writeError(w, http.StatusConflict, "ALREADY_EXISTS", err.Error())
 		default:
 			internalError(w, "importing track", err)
 		}
@@ -146,8 +142,7 @@ func receiveFile(r *http.Request, dir string) (string, error) {
 
 type blobFinder interface {
 	List(ctx context.Context, prefix string) ([]string, error)
-	PresignedGetURL(ctx context.Context, key string,
-		expiry time.Duration) (string, error)
+	PresignedGetURL(ctx context.Context, key string, expiry time.Duration) (string, error)
 }
 
 type streamURL struct {
@@ -162,14 +157,12 @@ func StreamTrack(repo catalog.TrackRepository, blobs blobFinder) http.HandlerFun
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(r.PathValue("track"))
 		if err != nil {
-			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
-				"track must be a UUID")
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", "track must be a UUID")
 			return
 		}
 		_, err = repo.GetTrack(r.Context(), id)
 		if errors.Is(err, catalog.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "RESOURCE_NOT_FOUND",
-				"no such track")
+			writeError(w, http.StatusNotFound, "RESOURCE_NOT_FOUND", "no such track")
 			return
 		}
 		if err != nil {
@@ -198,9 +191,7 @@ func StreamTrack(repo catalog.TrackRepository, blobs blobFinder) http.HandlerFun
 
 // audioKey finds the blob the pipeline stored for id. Its extension is
 // that of the uploaded file, so it is looked up by prefix.
-func audioKey(
-	ctx context.Context, blobs blobFinder, id uuid.UUID,
-) (string, error) {
+func audioKey(ctx context.Context, blobs blobFinder, id uuid.UUID) (string, error) {
 	prefix := "audio/" + id.String()
 	keys, err := blobs.List(ctx, prefix)
 	if err != nil {

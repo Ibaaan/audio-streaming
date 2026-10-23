@@ -32,14 +32,12 @@ func TestSeekInterval(t *testing.T) {
 			interval := seekInterval(samples, rate)
 
 			assert.Equal(t, tt.interval, interval, "interval")
-			assert.EqualValues(t, tt.points,
-				ceilDiv(secs, int64(interval)), "points")
+			assert.EqualValues(t, tt.points, ceilDiv(secs, int64(interval)), "points")
 		})
 	}
 }
 
-func source(codec string, lossless bool, rate, bits, ch int,
-) audio.SourceInfo {
+func source(codec string, lossless bool, rate, bits, ch int) audio.SourceInfo {
 	return audio.SourceInfo{
 		Codec:      codec,
 		Lossless:   lossless,

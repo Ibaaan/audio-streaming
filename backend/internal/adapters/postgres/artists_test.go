@@ -25,8 +25,7 @@ func TestAddArtist(t *testing.T) {
 	err := repo.AddArtist(context.Background(), &artist)
 
 	require.NoError(t, err)
-	got := selectOne[catalog.Artist](t, repo,
-		`SELECT * FROM artists WHERE id = $1`, artist.ID)
+	got := selectOne[catalog.Artist](t, repo, `SELECT * FROM artists WHERE id = $1`, artist.ID)
 	assert.Equal(t, artist, got)
 }
 
@@ -37,8 +36,7 @@ func TestAddArtistWithoutOptionalFields(t *testing.T) {
 	err := repo.AddArtist(context.Background(), &artist)
 
 	require.NoError(t, err)
-	got := selectOne[catalog.Artist](t, repo,
-		`SELECT * FROM artists WHERE id = $1`, artist.ID)
+	got := selectOne[catalog.Artist](t, repo, `SELECT * FROM artists WHERE id = $1`, artist.ID)
 	assert.Nil(t, got.SortName)
 	assert.Nil(t, got.ImageID)
 }

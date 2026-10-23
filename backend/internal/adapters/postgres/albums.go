@@ -23,10 +23,7 @@ func (r *Repository) AddAlbum(ctx context.Context, a *catalog.Album) error {
 
 const selectAlbumQuery = `SELECT * FROM albums WHERE id = $1`
 
-func (r *Repository) GetAlbum(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Album, error) {
+func (r *Repository) GetAlbum(ctx context.Context, id uuid.UUID) (catalog.Album, error) {
 	return queryOne[catalog.Album](ctx, r.dbtx, selectAlbumQuery, id)
 }
 
@@ -44,20 +41,15 @@ func (r *Repository) FindAlbum(
 	title string,
 	artistID uuid.UUID,
 ) (catalog.Album, error) {
-	return queryOne[catalog.Album](ctx, r.dbtx, selectAlbumByArtistQuery,
-		title, artistID)
+	return queryOne[catalog.Album](ctx, r.dbtx, selectAlbumByArtistQuery, title, artistID)
 }
 
 const insertAlbumArtistQuery = `
 INSERT INTO album_artists (album_id, artist_id, position)
 VALUES ($1, $2, $3)`
 
-func (r *Repository) AddAlbumArtist(
-	ctx context.Context,
-	aa catalog.AlbumArtist,
-) error {
-	_, err := r.dbtx.Exec(ctx, insertAlbumArtistQuery,
-		aa.AlbumID, aa.ArtistID, aa.Position)
+func (r *Repository) AddAlbumArtist(ctx context.Context, aa catalog.AlbumArtist) error {
+	_, err := r.dbtx.Exec(ctx, insertAlbumArtistQuery, aa.AlbumID, aa.ArtistID, aa.Position)
 	return err
 }
 
@@ -65,10 +57,7 @@ const insertAlbumTrackQuery = `
 INSERT INTO album_tracks (album_id, track_id, quality, disc_no, track_no)
 VALUES ($1, $2, $3, $4, $5)`
 
-func (r *Repository) AddAlbumTrack(
-	ctx context.Context,
-	at catalog.AlbumTrack,
-) error {
+func (r *Repository) AddAlbumTrack(ctx context.Context, at catalog.AlbumTrack) error {
 	_, err := r.dbtx.Exec(ctx, insertAlbumTrackQuery,
 		at.AlbumID, at.TrackID, at.Quality,
 		at.DiscNo, at.TrackNo)

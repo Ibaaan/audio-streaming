@@ -85,8 +85,7 @@ func TestSourceInfo(t *testing.T) {
 }
 
 func TestSourceInfoNoAudio(t *testing.T) {
-	p, err := parseProbe([]byte(
-		`{"streams":[{"codec_type":"video","codec_name":"png"}]}`))
+	p, err := parseProbe([]byte(`{"streams":[{"codec_type":"video","codec_name":"png"}]}`))
 	require.NoError(t, err)
 
 	_, err = sourceInfo(p)

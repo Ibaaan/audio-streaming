@@ -65,8 +65,7 @@ func generateConnStringPGSQL(cfg Config) string {
 // opens a savepoint, so transactions nest.
 type DBTX interface {
 	TxBeginner
-	Exec(ctx context.Context, sql string, args ...any) (
-		pgconn.CommandTag, error)
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, sql string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 }
@@ -86,18 +85,13 @@ var (
 // WithTransaction runs functions in order inside one transaction. If any fn
 // returns an error, the remaining fns are skipped and the transaction is
 // rolled back. If all succeed, the transaction is committed.
-func WithTransaction(
-	ctx context.Context,
-	txBeginner TxBeginner,
-	fun func(tx DBTX) error,
-) error {
+func WithTransaction(ctx context.Context, txBeginner TxBeginner, fun func(tx DBTX) error) error {
 	tx, err := txBeginner.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer func() {
-		rbCtx, cancel := context.WithTimeout(
-			context.WithoutCancel(ctx), 5*time.Second)
+		rbCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
 		_ = tx.Rollback(rbCtx)
 	}()

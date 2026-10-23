@@ -78,9 +78,7 @@ func (p *Pipeline) Run(ctx context.Context, path string) error {
 	return nil
 }
 
-func (p *Pipeline) uploadAudio(
-	ctx context.Context, id uuid.UUID, path string,
-) error {
+func (p *Pipeline) uploadAudio(ctx context.Context, id uuid.UUID, path string) error {
 	f, err := os.Open(path)
 	if err != nil {
 		return err

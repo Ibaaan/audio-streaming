@@ -81,9 +81,7 @@ func loadMigrations(dir string) ([]migration, error) {
 
 		version, err := strconv.ParseInt(prefix, 10, 64)
 		if err != nil {
-			return nil, fmt.Errorf(
-				"%s: name must start with <version>_", filepath.Base(p),
-			)
+			return nil, fmt.Errorf("%s: name must start with <version>_", filepath.Base(p))
 		}
 		if other, dup := seen[version]; dup {
 			return nil, fmt.Errorf(
@@ -105,9 +103,7 @@ func loadMigrations(dir string) ([]migration, error) {
 
 // apply runs m unless it is already recorded in schema_migrations.
 // It reports whether the migration was applied by this call.
-func apply(
-	ctx context.Context, db TxBeginner, m migration,
-) (bool, error) {
+func apply(ctx context.Context, db TxBeginner, m migration) (bool, error) {
 	sql, err := os.ReadFile(m.path)
 	if err != nil {
 		return false, err

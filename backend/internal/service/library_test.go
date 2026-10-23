@@ -134,8 +134,7 @@ func TestSaveUsesAlbumArtistForAlbum(t *testing.T) {
 	_, err := lib.Save(context.Background(), rec, nil)
 
 	require.NoError(t, err)
-	albumArtist, err := repo.GetArtist(context.Background(),
-		repo.albumArtists[0].ArtistID)
+	albumArtist, err := repo.GetArtist(context.Background(), repo.albumArtists[0].ArtistID)
 	require.NoError(t, err, "GetArtist")
 	assert.Equal(t, "Various Artists", albumArtist.Name)
 }
@@ -170,8 +169,7 @@ func TestSaveAddsCoverWithNewAlbum(t *testing.T) {
 
 func TestSaveSharesCoverBetweenAlbums(t *testing.T) {
 	lib, repo := newTestLibrary()
-	_, err := lib.Save(context.Background(), testRecord("Duality"),
-		testCover())
+	_, err := lib.Save(context.Background(), testRecord("Duality"), testCover())
 	require.NoError(t, err, "first Save")
 	rec := testRecord("Duality (Live)")
 	rec.Tags.Album = "Vol. 3 (Special Edition)"
@@ -181,8 +179,7 @@ func TestSaveSharesCoverBetweenAlbums(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, repo.albums, 2)
 	assert.Len(t, repo.images, 1)
-	assert.Equal(t, repo.albums[0].CoverImageID,
-		repo.albums[1].CoverImageID)
+	assert.Equal(t, repo.albums[0].CoverImageID, repo.albums[1].CoverImageID)
 }
 
 func TestSaveSkipsCoverForExistingAlbum(t *testing.T) {

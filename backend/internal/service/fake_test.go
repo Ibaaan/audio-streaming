@@ -23,10 +23,7 @@ type fakeRepo struct {
 
 var _ catalog.Repository = (*fakeRepo)(nil)
 
-func (f *fakeRepo) WithinTx(
-	ctx context.Context,
-	fn func(tx catalog.Repository) error,
-) error {
+func (f *fakeRepo) WithinTx(ctx context.Context, fn func(tx catalog.Repository) error) error {
 	saved := *f
 	if err := fn(f); err != nil {
 		*f = saved
@@ -50,10 +47,7 @@ func (f *fakeRepo) AddTrack(ctx context.Context, t *catalog.Track) error {
 	return nil
 }
 
-func (f *fakeRepo) GetTrack(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Track, error) {
+func (f *fakeRepo) GetTrack(ctx context.Context, id uuid.UUID) (catalog.Track, error) {
 	return first(f.tracks, func(t catalog.Track) bool { return t.ID == id })
 }
 
@@ -70,10 +64,7 @@ func (f *fakeRepo) FindTrack(
 	})
 }
 
-func (f *fakeRepo) AddTrackArtist(
-	ctx context.Context,
-	ta catalog.TrackArtist,
-) error {
+func (f *fakeRepo) AddTrackArtist(ctx context.Context, ta catalog.TrackArtist) error {
 	f.trackArtists = append(f.trackArtists, ta)
 	return nil
 }
@@ -83,17 +74,11 @@ func (f *fakeRepo) AddArtist(ctx context.Context, a *catalog.Artist) error {
 	return nil
 }
 
-func (f *fakeRepo) GetArtist(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Artist, error) {
+func (f *fakeRepo) GetArtist(ctx context.Context, id uuid.UUID) (catalog.Artist, error) {
 	return first(f.artists, func(a catalog.Artist) bool { return a.ID == id })
 }
 
-func (f *fakeRepo) FindArtistByName(
-	ctx context.Context,
-	name string,
-) (catalog.Artist, error) {
+func (f *fakeRepo) FindArtistByName(ctx context.Context, name string) (catalog.Artist, error) {
 	return first(f.artists, func(a catalog.Artist) bool {
 		return strings.EqualFold(a.Name, name)
 	})
@@ -104,10 +89,7 @@ func (f *fakeRepo) AddAlbum(ctx context.Context, a *catalog.Album) error {
 	return nil
 }
 
-func (f *fakeRepo) GetAlbum(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Album, error) {
+func (f *fakeRepo) GetAlbum(ctx context.Context, id uuid.UUID) (catalog.Album, error) {
 	return first(f.albums, func(a catalog.Album) bool { return a.ID == id })
 }
 
@@ -124,18 +106,12 @@ func (f *fakeRepo) FindAlbum(
 	})
 }
 
-func (f *fakeRepo) AddAlbumArtist(
-	ctx context.Context,
-	aa catalog.AlbumArtist,
-) error {
+func (f *fakeRepo) AddAlbumArtist(ctx context.Context, aa catalog.AlbumArtist) error {
 	f.albumArtists = append(f.albumArtists, aa)
 	return nil
 }
 
-func (f *fakeRepo) AddAlbumTrack(
-	ctx context.Context,
-	at catalog.AlbumTrack,
-) error {
+func (f *fakeRepo) AddAlbumTrack(ctx context.Context, at catalog.AlbumTrack) error {
 	f.albumTracks = append(f.albumTracks, at)
 	return nil
 }
@@ -145,17 +121,11 @@ func (f *fakeRepo) AddImage(ctx context.Context, img *catalog.Image) error {
 	return nil
 }
 
-func (f *fakeRepo) GetImage(
-	ctx context.Context,
-	id uuid.UUID,
-) (catalog.Image, error) {
+func (f *fakeRepo) GetImage(ctx context.Context, id uuid.UUID) (catalog.Image, error) {
 	return first(f.images, func(i catalog.Image) bool { return i.ID == id })
 }
 
-func (f *fakeRepo) FindImageByPath(
-	ctx context.Context,
-	storagePath string,
-) (catalog.Image, error) {
+func (f *fakeRepo) FindImageByPath(ctx context.Context, storagePath string) (catalog.Image, error) {
 	return first(f.images, func(i catalog.Image) bool {
 		return i.StoragePath == storagePath
 	})

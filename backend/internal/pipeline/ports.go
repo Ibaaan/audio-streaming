@@ -12,8 +12,7 @@ type Decoder interface {
 	// Probe describes the first audio stream without decoding it.
 	Probe(ctx context.Context, path string) (audio.SourceInfo, error)
 	// Open streams the audio as float blocks shaped by spec.
-	Open(ctx context.Context, path string, spec audio.DecodeSpec) (
-		audio.BlockReader, error)
+	Open(ctx context.Context, path string, spec audio.DecodeSpec) (audio.BlockReader, error)
 	// OpenPCM16 streams the audio unchanged as interleaved 16-bit
 	// little-endian PCM. Only for sources that are already 16-bit.
 	OpenPCM16(ctx context.Context, path string) (io.ReadCloser, error)
@@ -38,7 +37,8 @@ type Verifier interface {
 
 // Uploader stores audio and cover blobs. Satisfied by *s3store.Store.
 type Uploader interface {
-	Upload(ctx context.Context, key string, r io.Reader, size int64, contentType string) (int64, error)
+	Upload(ctx context.Context, key string, r io.Reader, size int64, contentType string) (
+		int64, error)
 }
 
 // RecordSaver persists the track record linking metadata and blob keys.

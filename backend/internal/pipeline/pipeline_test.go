@@ -19,9 +19,7 @@ type fakeDecoder struct {
 	err  error
 }
 
-func (d *fakeDecoder) Probe(ctx context.Context, path string) (
-	audio.SourceInfo, error,
-) {
+func (d *fakeDecoder) Probe(ctx context.Context, path string) (audio.SourceInfo, error) {
 	return d.info, d.err
 }
 
@@ -31,9 +29,7 @@ func (d *fakeDecoder) Open(
 	return nil, errors.New("not implemented")
 }
 
-func (d *fakeDecoder) OpenPCM16(ctx context.Context, path string) (
-	io.ReadCloser, error,
-) {
+func (d *fakeDecoder) OpenPCM16(ctx context.Context, path string) (io.ReadCloser, error) {
 	return nil, errors.New("not implemented")
 }
 
@@ -42,9 +38,7 @@ type fakeMeta struct {
 	cover *audio.Cover
 }
 
-func (m fakeMeta) Extract(ctx context.Context, path string) (
-	audio.Tags, *audio.Cover, error,
-) {
+func (m fakeMeta) Extract(ctx context.Context, path string) (audio.Tags, *audio.Cover, error) {
 	return m.tags, m.cover, nil
 }
 
@@ -59,9 +53,7 @@ func (fakeEncoder) Encode(
 
 type fakeVerifier struct{}
 
-func (fakeVerifier) Verify(path string, exp audio.Expectations) (
-	audio.Report, error,
-) {
+func (fakeVerifier) Verify(path string, exp audio.Expectations) (audio.Report, error) {
 	return audio.Report{}, errors.New("not implemented")
 }
 

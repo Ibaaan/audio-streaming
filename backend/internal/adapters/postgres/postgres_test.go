@@ -108,8 +108,7 @@ func TestWithTransactionStopsAndRollsBackOnStepError(t *testing.T) {
 		return nil
 	}
 
-	err := WithTransaction(context.Background(), &fakeBeginner{tx: tx},
-		test)
+	err := WithTransaction(context.Background(), &fakeBeginner{tx: tx}, test)
 
 	require.ErrorIs(t, err, stepErr)
 	assert.Equal(t, []int{0, 1}, calls, "steps after failure skipped")
@@ -122,8 +121,7 @@ func TestWithTransactionReturnsBeginError(t *testing.T) {
 	called := false
 	step := func(DBTX) error { called = true; return nil }
 
-	err := WithTransaction(context.Background(),
-		&fakeBeginner{err: beginErr}, step)
+	err := WithTransaction(context.Background(), &fakeBeginner{err: beginErr}, step)
 
 	require.ErrorIs(t, err, beginErr)
 	assert.ErrorContains(t, err, "begin tx")
@@ -136,8 +134,7 @@ func TestWithTransactionReturnsCommitError(t *testing.T) {
 	called := false
 	step := func(DBTX) error { called = true; return nil }
 
-	err := WithTransaction(context.Background(), &fakeBeginner{tx: tx},
-		step)
+	err := WithTransaction(context.Background(), &fakeBeginner{tx: tx}, step)
 
 	require.ErrorIs(t, err, commitErr)
 	assert.ErrorContains(t, err, "commit tx")

@@ -15,8 +15,7 @@ import (
 type TrackRepository interface {
 	AddTrack(ctx context.Context, t *Track) error
 	GetTrack(ctx context.Context, id uuid.UUID) (Track, error)
-	FindTrack(ctx context.Context, title string, artistID uuid.UUID) (
-		Track, error)
+	FindTrack(ctx context.Context, title string, artistID uuid.UUID) (Track, error)
 	AddTrackArtist(ctx context.Context, ta TrackArtist) error
 }
 
@@ -36,8 +35,7 @@ type ArtistRepository interface {
 type AlbumRepository interface {
 	AddAlbum(ctx context.Context, a *Album) error
 	GetAlbum(ctx context.Context, id uuid.UUID) (Album, error)
-	FindAlbum(ctx context.Context, title string, artistID uuid.UUID) (
-		Album, error)
+	FindAlbum(ctx context.Context, title string, artistID uuid.UUID) (Album, error)
 	AddAlbumArtist(ctx context.Context, aa AlbumArtist) error
 	AddAlbumTrack(ctx context.Context, at AlbumTrack) error
 }

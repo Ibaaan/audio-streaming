@@ -49,9 +49,7 @@ var losslessCodecs = map[string]bool{
 }
 
 // Probe describes the first audio stream of path.
-func (f *FFmpeg) Probe(ctx context.Context, path string) (
-	audio.SourceInfo, error,
-) {
+func (f *FFmpeg) Probe(ctx context.Context, path string) (audio.SourceInfo, error) {
 	p, err := f.probe(ctx, path)
 	if err != nil {
 		return audio.SourceInfo{}, err
@@ -101,8 +99,7 @@ func sourceInfo(p probeOutput) (audio.SourceInfo, error) {
 	}
 	rate, err := strconv.Atoi(s.SampleRate)
 	if err != nil {
-		return audio.SourceInfo{}, fmt.Errorf("ffprobe: sample rate %q: %w",
-			s.SampleRate, err)
+		return audio.SourceInfo{}, fmt.Errorf("ffprobe: sample rate %q: %w", s.SampleRate, err)
 	}
 
 	info := audio.SourceInfo{

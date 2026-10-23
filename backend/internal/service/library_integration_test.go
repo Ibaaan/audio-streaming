@@ -36,8 +36,7 @@ func startTestDB() (*pgxpool.Pool, error) {
 		tcpostgres.BasicWaitStrategies(),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("starting postgres container "+
-			"(is docker running?): %w", err)
+		return nil, fmt.Errorf("starting postgres container (is docker running?): %w", err)
 	}
 
 	dsn, err := ctr.ConnectionString(ctx, "sslmode=disable")
@@ -99,8 +98,7 @@ func countRows(t *testing.T, table string) int {
 	pool, err := testPool()
 	require.NoError(t, err, "test database")
 	var n int
-	err = pool.QueryRow(context.Background(),
-		`SELECT count(*) FROM `+table).Scan(&n)
+	err = pool.QueryRow(context.Background(), `SELECT count(*) FROM `+table).Scan(&n)
 	require.NoError(t, err, "count %s", table)
 	return n
 }

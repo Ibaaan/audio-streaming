@@ -53,11 +53,7 @@ func (l *Library) Save(
 
 // save and the methods below it must use tx, never l.repo, so that
 // everything they write is part of the transaction.
-func (l *Library) save(
-	ctx context.Context,
-	tx catalog.Repository,
-	e entry,
-) (catalog.Track, error) {
+func (l *Library) save(ctx context.Context, tx catalog.Repository, e entry) (catalog.Track, error) {
 	artist, err := findOrAddArtist(ctx, tx, e.artist)
 	if err != nil {
 		return catalog.Track{}, err
@@ -92,8 +88,7 @@ func addNewTrack(
 ) (catalog.Track, error) {
 	_, err := tx.FindTrack(ctx, e.title, artist.ID)
 	if err == nil {
-		return catalog.Track{}, fmt.Errorf("%w: %q by %q",
-			ErrTrackExists, e.title, e.artist)
+		return catalog.Track{}, fmt.Errorf("%w: %q by %q", ErrTrackExists, e.title, e.artist)
 	}
 	if !errors.Is(err, catalog.ErrNotFound) {
 		return catalog.Track{}, fmt.Errorf("finding track: %w", err)
