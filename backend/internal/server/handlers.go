@@ -113,7 +113,7 @@ func receiveFile(r *http.Request, dir string) (string, error) {
 	}
 	for {
 		part, err := mr.NextPart()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			return "", errors.New(`missing "file" field`)
 		}
 		if err != nil {

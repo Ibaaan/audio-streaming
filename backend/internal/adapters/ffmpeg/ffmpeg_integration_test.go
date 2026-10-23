@@ -31,7 +31,7 @@ func gen(t *testing.T, name string, args ...string) string {
 	t.Helper()
 	out := filepath.Join(t.TempDir(), name)
 	args = append([]string{"-nostdin", "-loglevel", "error", "-y"}, args...)
-	cmd := exec.Command(newTestFFmpeg().ffmpeg, append(args, out)...)
+	cmd := exec.CommandContext(t.Context(), newTestFFmpeg().ffmpeg, append(args, out)...)
 	msg, err := cmd.CombinedOutput()
 	require.NoError(t, err, string(msg))
 	return out

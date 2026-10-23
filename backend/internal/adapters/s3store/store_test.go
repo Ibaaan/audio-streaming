@@ -126,9 +126,11 @@ func TestPresignedGetURL(t *testing.T) {
 	u, err := c.PresignedGetURL(context.Background(), "track.txt", time.Minute)
 
 	require.NoError(t, err)
-	resp, err := http.Get(u)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, u, nil)
 	require.NoError(t, err)
-	defer resp.Body.Close()
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer func() { _ = resp.Body.Close() }()
 	got, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, resp.StatusCode, "body: %s", got)

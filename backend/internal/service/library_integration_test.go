@@ -170,7 +170,7 @@ func TestDBSaveRejectsCommittedTrack(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), rec, nil)
 
-	assert.ErrorIs(t, err, ErrTrackExists)
+	require.ErrorIs(t, err, ErrTrackExists)
 	assert.Equal(t, 1, countRows(t, "tracks"))
 }
 
@@ -187,7 +187,7 @@ func TestDBSaveRollsBackOnFailure(t *testing.T) {
 
 	require.Error(t, err)
 	_, err = repo.GetTrack(context.Background(), rec.TrackID)
-	assert.ErrorIs(t, err, catalog.ErrNotFound, "track")
+	require.ErrorIs(t, err, catalog.ErrNotFound, "track")
 	_, err = repo.FindArtistByName(context.Background(), "Corey Taylor")
 	assert.ErrorIs(t, err, catalog.ErrNotFound, "artist")
 }

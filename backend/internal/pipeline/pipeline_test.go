@@ -181,7 +181,7 @@ func TestRunRejectsEmptyFile(t *testing.T) {
 
 	err := env.p.Run(context.Background(), path)
 
-	assert.ErrorIs(t, err, ErrInvalidSource)
+	require.ErrorIs(t, err, ErrInvalidSource)
 	assert.Empty(t, env.blobs.blobs)
 	assert.Empty(t, env.records.saved)
 }
@@ -193,7 +193,7 @@ func TestRunRejectsUnprobeableFile(t *testing.T) {
 
 	err := env.p.Run(context.Background(), path)
 
-	assert.ErrorIs(t, err, ErrInvalidSource)
+	require.ErrorIs(t, err, ErrInvalidSource)
 	assert.Empty(t, env.blobs.blobs)
 	assert.Empty(t, env.records.saved)
 }

@@ -27,7 +27,7 @@ func TestProbe(t *testing.T) {
 }
 
 func TestExtractReal(t *testing.T) {
-	RemoveCover("../../../test_data/")
+	_ = RemoveCover("../../../test_data/")
 	path := someRealFile
 	tags, c, err := newTestFFmpeg().Extract(context.Background(), path)
 
@@ -35,7 +35,7 @@ func TestExtractReal(t *testing.T) {
 		return
 	}
 
-	WriteCover("../../../test_data", c.Data, c.MIMEType)
+	_, _ = WriteCover("../../../test_data", c.Data, c.MIMEType)
 
 	t.Logf("\nprobe result: %#v", tags)
 }

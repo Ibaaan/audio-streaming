@@ -124,7 +124,7 @@ func TestWithTransactionReturnsBeginError(t *testing.T) {
 	err := WithTransaction(context.Background(), &fakeBeginner{err: beginErr}, step)
 
 	require.ErrorIs(t, err, beginErr)
-	assert.ErrorContains(t, err, "begin tx")
+	require.ErrorContains(t, err, "begin tx")
 	assert.False(t, called, "step called")
 }
 
@@ -137,7 +137,7 @@ func TestWithTransactionReturnsCommitError(t *testing.T) {
 	err := WithTransaction(context.Background(), &fakeBeginner{tx: tx}, step)
 
 	require.ErrorIs(t, err, commitErr)
-	assert.ErrorContains(t, err, "commit tx")
+	require.ErrorContains(t, err, "commit tx")
 	assert.True(t, called, "step called")
 	assert.True(t, tx.committed, "commit attempted")
 	assert.True(t, tx.rolledBack)

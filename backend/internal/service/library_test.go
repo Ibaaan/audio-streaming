@@ -110,7 +110,7 @@ func TestSaveRejectsExistingTrack(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), rec, nil)
 
-	assert.ErrorIs(t, err, ErrTrackExists)
+	require.ErrorIs(t, err, ErrTrackExists)
 	assert.Len(t, repo.tracks, 1)
 }
 
@@ -202,7 +202,7 @@ func TestSaveRejectsCoverWithoutPath(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), testRecord("Duality"), cover)
 
-	assert.ErrorIs(t, err, ErrInvalidRecord)
+	require.ErrorIs(t, err, ErrInvalidRecord)
 	assert.Empty(t, repo.tracks)
 }
 
@@ -212,6 +212,6 @@ func TestSaveRejectsInvalidRecord(t *testing.T) {
 
 	_, err := lib.Save(context.Background(), rec, nil)
 
-	assert.ErrorIs(t, err, ErrInvalidRecord)
+	require.ErrorIs(t, err, ErrInvalidRecord)
 	assert.Empty(t, repo.artists)
 }
