@@ -40,7 +40,7 @@ type albumEntry struct {
 func newEntry(rec audio.Record, cover *catalog.Image) (entry, error) {
 	tags := rec.Tags
 	e := entry{
-		trackID: rec.TrackId,
+		trackID: rec.TrackID,
 		title:   strings.TrimSpace(tags.Title),
 		artist:  strings.TrimSpace(tags.Artist),
 	}

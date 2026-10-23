@@ -151,7 +151,7 @@ func TestRunUploadsAudioAndSavesRecord(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, env.records.saved, 1)
 	rec := env.records.saved[0]
-	key := "audio/" + rec.TrackId.String() + ".flac"
+	key := "audio/" + rec.TrackID.String() + ".flac"
 	require.Contains(t, env.blobs.blobs, key)
 	assert.Equal(t, audioData, env.blobs.blobs[key].data)
 	assert.Equal(t, "audio/flac", env.blobs.blobs[key].contentType)

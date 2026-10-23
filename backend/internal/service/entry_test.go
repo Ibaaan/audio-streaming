@@ -16,7 +16,7 @@ func TestNewEntryRejectsInvalidTags(t *testing.T) {
 		change func(rec *audio.Record)
 	}{
 		{"missing track ID", func(r *audio.Record) {
-			r.TrackId = uuid.Nil
+			r.TrackID = uuid.Nil
 		}},
 		{"blank title", func(r *audio.Record) { r.Tags.Title = " " }},
 		{"blank artist", func(r *audio.Record) { r.Tags.Artist = "" }},

@@ -1,7 +1,6 @@
 package pipeline
 
 import (
-	"audio-streaming/internal/audio"
 	"context"
 	"errors"
 	"fmt"
@@ -9,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"audio-streaming/internal/audio"
 
 	"github.com/google/uuid"
 )
@@ -66,7 +67,7 @@ func (p *Pipeline) Run(ctx context.Context, path string) error {
 	}
 
 	rec := audio.Record{
-		TrackId:    id,
+		TrackID:    id,
 		SourceInfo: info,
 		Tags:       tags,
 		Cover:      cover,

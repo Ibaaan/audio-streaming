@@ -19,7 +19,7 @@ func newTestLibrary() (*Library, *fakeRepo) {
 
 func testRecord(title string) audio.Record {
 	return audio.Record{
-		TrackId: uuid.Must(uuid.NewV7()),
+		TrackID: uuid.Must(uuid.NewV7()),
 		SourceInfo: audio.SourceInfo{
 			Lossless:   true,
 			SampleRate: 44100,
@@ -83,8 +83,8 @@ func TestSaveUsesRecordTrackID(t *testing.T) {
 	track, err := lib.Save(context.Background(), rec, nil)
 
 	require.NoError(t, err)
-	assert.Equal(t, rec.TrackId, track.ID)
-	assert.Equal(t, rec.TrackId, repo.tracks[0].ID)
+	assert.Equal(t, rec.TrackID, track.ID)
+	assert.Equal(t, rec.TrackID, repo.tracks[0].ID)
 }
 
 func TestSaveReusesArtistAndAlbum(t *testing.T) {
