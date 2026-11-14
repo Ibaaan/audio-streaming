@@ -11,6 +11,7 @@ import (
 	"audio-streaming/internal/adapters/postgres"
 	"audio-streaming/internal/adapters/s3store"
 	"audio-streaming/internal/pipeline"
+	"audio-streaming/internal/server/handlers"
 	"audio-streaming/internal/service"
 )
 
@@ -35,6 +36,7 @@ func Run(ctx context.Context) error {
 	}
 
 	repo := postgres.NewRepository(pool)
+	lib := service.NewLibrary(repo)
 	ff := ffmpeg.New(os.Getenv("FFMPEG"), os.Getenv("FFPROBE"))
 	tmpDir := os.TempDir()
 	p, err := pipeline.New(pipeline.Deps{
@@ -44,7 +46,7 @@ func Run(ctx context.Context) error {
 		Verifier: NoVerifier{},
 		Blobs:    store,
 		Records: RecordSaver{
-			Lib:   service.NewLibrary(repo),
+			Lib:   lib,
 			Blobs: store,
 		},
 	}, tmpDir)
@@ -54,9 +56,9 @@ func Run(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServer(http.Dir("../static")))
-	mux.HandleFunc("GET /v1/tracks", ListTracks(repo))
-	mux.HandleFunc("POST /v1/tracks", UploadTrack(p, tmpDir))
-	mux.HandleFunc("GET /v1/tracks/{track}/stream", StreamTrack(repo, store))
+	mux.HandleFunc("GET /v1/tracks", handlers.ListTracks(lib))
+	mux.HandleFunc("POST /v1/tracks", handlers.UploadTrack(p, tmpDir))
+	mux.HandleFunc("GET /v1/tracks/{track}/stream", handlers.StreamTrack(lib, store))
 
 	addr := ":8080"
 	if v := os.Getenv("ADDR"); v != "" {
