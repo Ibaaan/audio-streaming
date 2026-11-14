@@ -16,14 +16,8 @@ type TrackRepository interface {
 	AddTrack(ctx context.Context, t *Track) error
 	GetTrack(ctx context.Context, id uuid.UUID) (Track, error)
 	FindTrack(ctx context.Context, title string, artistID uuid.UUID) (Track, error)
-	AddTrackArtist(ctx context.Context, ta TrackArtist) error
-}
-
-// TrackLister reads the catalog for display. It is kept out of
-// Repository because importing tracks never needs it.
-type TrackLister interface {
-	// ListTracks returns every track, newest first.
 	ListTracks(ctx context.Context) ([]TrackSummary, error)
+	AddTrackArtist(ctx context.Context, ta TrackArtist) error
 }
 
 type ArtistRepository interface {

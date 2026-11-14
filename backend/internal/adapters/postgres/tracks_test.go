@@ -146,7 +146,7 @@ func TestFindTrackIgnoresOtherArtists(t *testing.T) {
 	assert.ErrorIs(t, err, catalog.ErrNotFound)
 }
 
-func TestListTracksJoinsArtistsAndAlbum(t *testing.T) {
+func TestListTracksJoinsPrimaryArtistAndAlbum(t *testing.T) {
 	repo := newTestRepo(t)
 	ctx := context.Background()
 	track := mustAddTrack(t, repo)
@@ -174,13 +174,9 @@ func TestListTracksJoinsArtistsAndAlbum(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, []catalog.TrackSummary{{
-		ID:          track.ID,
-		Title:       "Duality",
-		Artist:      "Slipknot, Corey Taylor",
-		Album:       ptr("Vol. 3"),
-		ReleaseYear: ptr(int16(2004)),
-		DurationMs:  252_000,
-		CreatedAt:   track.CreatedAt,
+		Track:  track,
+		Artist: slipknot,
+		Album:  &album,
 	}}, got)
 }
 
@@ -193,7 +189,7 @@ func TestListTracksWithoutAlbum(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, got, 1)
 	assert.Nil(t, got[0].Album)
-	assert.Nil(t, got[0].ReleaseYear)
+	assert.Equal(t, catalog.Artist{}, got[0].Artist)
 }
 
 func TestListTracksEmpty(t *testing.T) {

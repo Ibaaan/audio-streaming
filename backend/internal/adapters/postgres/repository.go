@@ -20,10 +20,7 @@ func NewRepository(dbtx DBTX) *Repository {
 	return &Repository{dbtx: dbtx}
 }
 
-var (
-	_ catalog.Repository  = (*Repository)(nil)
-	_ catalog.TrackLister = (*Repository)(nil)
-)
+var _ catalog.Repository = (*Repository)(nil)
 
 // WithinTx runs fn with a repository bound to a new transaction and
 // commits if fn returns nil. On a repository that is already inside a

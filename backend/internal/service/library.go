@@ -26,6 +26,17 @@ func NewLibrary(repo catalog.Repository) *Library {
 	return &Library{repo: repo}
 }
 
+// ListTracks returns every track in the library, newest first.
+func (l *Library) ListTracks(ctx context.Context) ([]catalog.TrackSummary, error) {
+	return l.repo.ListTracks(ctx)
+}
+
+// GetTrack returns the track with id. If it does not exist, the returned
+// error matches catalog.ErrNotFound.
+func (l *Library) GetTrack(ctx context.Context, id uuid.UUID) (catalog.Track, error) {
+	return l.repo.GetTrack(ctx, id)
+}
+
 // Save stores rec as a new track with ID rec.TrackId, in one
 // transaction. Its artist and album are looked up and created if the
 // catalog does not have them yet. rec.Cover is ignored; cover, if not

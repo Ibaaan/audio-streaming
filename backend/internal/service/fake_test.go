@@ -51,6 +51,16 @@ func (f *fakeRepo) GetTrack(ctx context.Context, id uuid.UUID) (catalog.Track, e
 	return first(f.tracks, func(t catalog.Track) bool { return t.ID == id })
 }
 
+func (f *fakeRepo) ListTracks(ctx context.Context) ([]catalog.TrackSummary, error) {
+	tracks := make([]catalog.TrackSummary, 0, len(f.tracks))
+	for _, track := range f.tracks {
+		tracks = append(tracks, catalog.TrackSummary{
+			Track: track,
+		})
+	}
+	return tracks, nil
+}
+
 func (f *fakeRepo) FindTrack(
 	ctx context.Context,
 	title string,
