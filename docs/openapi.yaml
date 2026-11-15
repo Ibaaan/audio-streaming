@@ -10,9 +10,7 @@ info:
     `:custom`-методы).
 
     **Общие соглашения**
-    - Ресурсы идентифицируются полем `name` — полным именем ресурса вида
-      `artists/{uuid}`, `albums/{uuid}`, `tracks/{uuid}` (AIP-122).
-      Поля `id` у ресурсов нет; UUID — последний сегмент имени.
+    - Ресурсы идентифицируются полем `id` — UUID без префикса типа ресурса.
     - Имена полей — `lower_snake_case`, значения перечислений —
       `lower_snake_case`; только `reason` ошибок — `UPPER_SNAKE_CASE`.
     - Временные метки (`create_time`, `update_time`) — RFC 3339, UTC.
@@ -311,7 +309,7 @@ components:
       name: artist
       in: path
       required: true
-      description: UUID артиста (последний сегмент имени `artists/{artist}`)
+      description: UUID артиста
       schema:
         type: string
         format: uuid
@@ -319,7 +317,7 @@ components:
       name: album
       in: path
       required: true
-      description: UUID альбома (последний сегмент имени `albums/{album}`)
+      description: UUID альбома
       schema:
         type: string
         format: uuid
@@ -327,7 +325,7 @@ components:
       name: track
       in: path
       required: true
-      description: UUID трека (последний сегмент имени `tracks/{track}`)
+      description: UUID трека
       schema:
         type: string
         format: uuid
@@ -377,10 +375,10 @@ components:
           example:
             error:
               code: 404
-              message: "Album albums/4d5e... not found"
+              message: "Album 4d5e0000-0000-0000-0000-000000000001 not found"
               reason: RESOURCE_NOT_FOUND
               metadata:
-                resource: albums/4d5e...
+                resource: 4d5e0000-0000-0000-0000-000000000001
     TrackNotReady:
       description: Трек существует, но ещё обрабатывается пайплайном
       content:
@@ -390,10 +388,10 @@ components:
           example:
             error:
               code: 409
-              message: "Track tracks/7f6e... is still processing"
+              message: "Track 7f6e0000-0000-0000-0000-000000000001 is still processing"
               reason: TRACK_NOT_READY
               metadata:
-                track: tracks/7f6e...
+                track: 7f6e0000-0000-0000-0000-000000000001
     Internal:
       description: Внутренняя ошибка сервера
       content:
@@ -509,16 +507,16 @@ components:
 
     ArtistRef:
       type: object
-      required: [name, display_name]
+      required: [id, display_name]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `artists/{uuid}`
-          pattern: '^artists/[0-9a-f-]{36}$'
+          description: UUID артиста
+          format: uuid
         display_name:
           type: string
       example:
-        name: artists/9a8b7c6d-0000-0000-0000-000000000001
+        id: 9a8b7c6d-0000-0000-0000-000000000001
         display_name: Radiohead
 
     TrackArtist:
@@ -533,12 +531,12 @@ components:
 
     AlbumRef:
       type: object
-      required: [name, title, album_type, release_year, cover]
+      required: [id, title, album_type, release_year, cover]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `albums/{uuid}`
-          pattern: '^albums/[0-9a-f-]{36}$'
+          description: UUID альбома
+          format: uuid
         title:
           type: string
         album_type:
@@ -566,12 +564,12 @@ components:
     ArtistSummary:
       type: object
       description: Артист в списках
-      required: [name, display_name, image]
+      required: [id, display_name, image]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `artists/{uuid}`
-          pattern: '^artists/[0-9a-f-]{36}$'
+          description: UUID артиста
+          format: uuid
         display_name:
           type: string
         image:
@@ -580,12 +578,12 @@ components:
     TrackSummary:
       type: object
       description: Трек в списках
-      required: [name, title, duration_ms, artists, album, disc_number, track_number]
+      required: [id, title, duration_ms, artists, album, disc_number, track_number]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `tracks/{uuid}`
-          pattern: '^tracks/[0-9a-f-]{36}$'
+          description: UUID трека
+          format: uuid
         title:
           type: string
         duration_ms:
@@ -619,12 +617,12 @@ components:
     AlbumTrack:
       type: object
       description: Трек внутри альбома (без вложенного альбома)
-      required: [name, title, duration_ms, artists, disc_number, track_number]
+      required: [id, title, duration_ms, artists, disc_number, track_number]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `tracks/{uuid}`
-          pattern: '^tracks/[0-9a-f-]{36}$'
+          description: UUID трека
+          format: uuid
         title:
           type: string
         duration_ms:
@@ -731,12 +729,12 @@ components:
 
     Artist:
       type: object
-      required: [name, display_name, image, stats, create_time, update_time]
+      required: [id, display_name, image, stats, create_time, update_time]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `artists/{uuid}`
-          pattern: '^artists/[0-9a-f-]{36}$'
+          description: UUID артиста
+          format: uuid
         display_name:
           type: string
         image:
@@ -853,12 +851,12 @@ components:
 
     Track:
       type: object
-      required: [name, title, duration_ms, artists, albums, audio, create_time, update_time]
+      required: [id, title, duration_ms, artists, albums, audio, create_time, update_time]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `tracks/{uuid}`
-          pattern: '^tracks/[0-9a-f-]{36}$'
+          description: UUID трека
+          format: uuid
         title:
           type: string
         duration_ms:
