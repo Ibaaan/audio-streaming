@@ -168,13 +168,13 @@
 			}
 			for (const t of tracks) {
 				const tr = document.createElement("tr");
-				tr.dataset.id = t.id;
+				tr.dataset.id = t.track.id;
 				tr.append(
-					cell(t.title),
-					cell(t.artist),
-					cell(t.album, "hide-narrow"),
-					cell(t.release_year, "hide-narrow"),
-					cell(formatDuration(t.duration_ms), "num"),
+					cell(t.track.title),
+					cell(t.artist.name),
+					cell(t.album?.title, "hide-narrow"),
+					cell(t.album?.release_year, "hide-narrow"),
+					cell(formatDuration(t.track.duration_ms), "num"),
 				);
 				tr.addEventListener("click", () => play(t, tr));
 				tbody.append(tr);
@@ -182,7 +182,7 @@
 		}
 
 		async function play(track, row) {
-			const res = await fetch("/v1/tracks/" + track.id + "/stream");
+			const res = await fetch("/v1/tracks/" + track.track.id + "/stream");
 			if (!res.ok) {
 				setStatus("Cannot play: " + await errorMessage(res), true);
 				return;
@@ -190,7 +190,7 @@
 			const { url } = await res.json();
 			player.src = url;
 			player.play();
-			nowEl.textContent = track.artist + " — " + track.title;
+			nowEl.textContent = track.artist.name + " — " + track.track.title;
 			for (const tr of tbody.children) tr.classList.remove("playing");
 			row.classList.add("playing");
 		}

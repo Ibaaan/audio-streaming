@@ -2,19 +2,21 @@ package handlers
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"mime"
 	"net/http"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
-
-	"audio-streaming/internal/catalog"
-	"audio-streaming/internal/service"
 )
 
 const streamExpiry = time.Hour
+
+type trackChecker interface {
+	HasTrack(ctx context.Context, id uuid.UUID) (bool, error)
+}
 
 type blobFinder interface {
 	List(ctx context.Context, prefix string) ([]string, error)
@@ -29,20 +31,20 @@ type streamURL struct {
 
 // StreamTrack returns a presigned URL for the track's audio. The browser
 // streams from storage directly, with Range requests for seeking.
-func StreamTrack(lib *service.Library, blobs blobFinder) http.HandlerFunc {
+func StreamTrack(lib trackChecker, blobs blobFinder) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id, err := uuid.Parse(r.PathValue("track"))
 		if err != nil {
 			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", "track must be a UUID")
 			return
 		}
-		_, err = lib.GetTrack(r.Context(), id)
-		if errors.Is(err, catalog.ErrNotFound) {
-			writeError(w, http.StatusNotFound, "RESOURCE_NOT_FOUND", "no such track")
+		present, err := lib.HasTrack(r.Context(), id)
+		if err != nil {
+			internalError(w, "checking track", err)
 			return
 		}
-		if err != nil {
-			internalError(w, "getting track", err)
+		if !present {
+			writeError(w, http.StatusNotFound, "RESOURCE_NOT_FOUND", "no such track")
 			return
 		}
 
@@ -63,4 +65,20 @@ func StreamTrack(lib *service.Library, blobs blobFinder) http.HandlerFunc {
 			ExpireTime:  time.Now().Add(streamExpiry).UTC(),
 		})
 	}
+}
+
+// audioKey finds the blob the pipeline stored for id. Its extension is
+// that of the uploaded file, so it is looked up by prefix.
+func audioKey(ctx context.Context, blobs blobFinder, id uuid.UUID) (string, error) {
+	prefix := "audio/" + id.String()
+	keys, err := blobs.List(ctx, prefix)
+	if err != nil {
+		return "", err
+	}
+	for _, k := range keys {
+		if strings.TrimSuffix(k, path.Ext(k)) == prefix {
+			return k, nil
+		}
+	}
+	return "", fmt.Errorf("no blob for track %s", id)
 }

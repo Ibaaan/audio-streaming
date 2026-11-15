@@ -1,10 +1,8 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -12,8 +10,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
 // apiError is the error body from docs/openapi.yaml.
@@ -79,20 +75,4 @@ func receiveFile(r *http.Request, dir string) (string, error) {
 		}
 		return f.Name(), nil
 	}
-}
-
-// audioKey finds the blob the pipeline stored for id. Its extension is
-// that of the uploaded file, so it is looked up by prefix.
-func audioKey(ctx context.Context, blobs blobFinder, id uuid.UUID) (string, error) {
-	prefix := "audio/" + id.String()
-	keys, err := blobs.List(ctx, prefix)
-	if err != nil {
-		return "", err
-	}
-	for _, k := range keys {
-		if strings.TrimSuffix(k, path.Ext(k)) == prefix {
-			return k, nil
-		}
-	}
-	return "", fmt.Errorf("no blob for track %s", id)
 }

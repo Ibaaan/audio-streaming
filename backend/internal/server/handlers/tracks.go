@@ -1,13 +1,17 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 
 	"audio-streaming/internal/catalog"
-	"audio-streaming/internal/service"
 )
 
-func ListTracks(lib *service.Library) http.HandlerFunc {
+type trackLister interface {
+	ListTracks(ctx context.Context) ([]catalog.TrackSummary, error)
+}
+
+func ListTracks(lib trackLister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		tracks, err := lib.ListTracks(r.Context())
 		if err != nil {

@@ -31,10 +31,16 @@ func (l *Library) ListTracks(ctx context.Context) ([]catalog.TrackSummary, error
 	return l.repo.ListTracks(ctx)
 }
 
-// GetTrack returns the track with id. If it does not exist, the returned
-// error matches catalog.ErrNotFound.
-func (l *Library) GetTrack(ctx context.Context, id uuid.UUID) (catalog.Track, error) {
-	return l.repo.GetTrack(ctx, id)
+// HasTrack reports whether the library contains a track with id.
+func (l *Library) HasTrack(ctx context.Context, id uuid.UUID) (bool, error) {
+	_, err := l.repo.GetTrack(ctx, id)
+	if errors.Is(err, catalog.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("checking track: %w", err)
+	}
+	return true, nil
 }
 
 // Save stores rec as a new track with ID rec.TrackId, in one

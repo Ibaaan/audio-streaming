@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -12,9 +13,13 @@ import (
 
 const maxUploadSize = 1 << 30
 
+type trackImporter interface {
+	Run(ctx context.Context, path string) error
+}
+
 // UploadTrack takes a multipart form with the audio in its "file" field,
 // copies it to a temporary file and runs the pipeline on it.
-func UploadTrack(p *pipeline.Pipeline, tmpDir string) http.HandlerFunc {
+func UploadTrack(p trackImporter, tmpDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 		tmp, err := receiveFile(r, tmpDir)
