@@ -19,13 +19,14 @@ info:
     - Длительности (`duration_ms`) — целое число миллисекунд.
     - Клиенту отдаются только объекты со статусом `ready`. Треки и изображения
       в обработке или с ошибкой пайплайна в выдачу не попадают.
-    - Списки пагинируются токенами (AIP-158): запрос принимает `page_size`
-      и `page_token`, ответ содержит `next_page_token` (отсутствует на
-      последней странице) и `total_size`. `page_size` по умолчанию 20;
-      значения больше 100 приводятся к 100; `0` означает значение по
-      умолчанию; отрицательное значение — ошибка `400` с `reason` = `INVALID_PARAMETER`.
-      Токен непрозрачен и действителен только для того же запроса, который
-      его выдал.
+    - Списки пагинируются числовым смещением: запрос принимает `page_size`
+      и `offset` (число пропускаемых элементов, по умолчанию 0), ответ содержит
+      `next_offset` (отсутствует на последней странице) и `total_size`.
+      `next_offset` равен текущему `offset` плюс число возвращённых элементов.
+      `page_size` по умолчанию 20; значения больше 100 приводятся к 100;
+      `0` означает значение по умолчанию. Отрицательные `page_size` и `offset`
+      приводят к ошибке `400` с `reason` = `INVALID_PARAMETER`.
+      При `offset` не меньше `total_size` возвращается пустой список без `next_offset`.
     - Ошибки — JSON `{error: {code, message, reason, metadata}}`; клиент
       ориентируется на HTTP-статус и `reason`, а не на текст `message`.
     - Вложенные сущности встраиваются параметром `include` (список через
@@ -68,8 +69,7 @@ paths:
       description: |
         Возвращает только группы, запрошенные
         в `types`. `page_size` применяется к каждой группе отдельно, у каждой
-        группы свой `next_page_token`. `page_token` допустим только если в
-        `types` указан ровно один тип. Если ничего не найдено, возвращается
+        группы свой `next_offset`. `offset` применяется к каждой группе отдельно. Если ничего не найдено, возвращается
         `200` с пустыми списками.
       operationId: search
       parameters:
@@ -95,7 +95,7 @@ paths:
               $ref: '#/components/schemas/SearchType'
           example: [artist, track]
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           description: Результаты поиска
@@ -151,14 +151,14 @@ paths:
       summary: Треки артиста
       description: |
         Все треки, где артист указан в `artists` в любой роли.
-        Сортировка: дата релиза альбома (новые первыми), затем `disc_number`,
+        Сортировка: год релиза альбома (новые первыми), затем `disc_number`,
         `track_number`. У существующего артиста без треков возвращается пустой
         список.
       operationId: listArtistTracks
       parameters:
         - $ref: '#/components/parameters/ArtistId'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           description: Страница треков
@@ -178,12 +178,12 @@ paths:
       tags: [Artists]
       summary: Альбомы артиста
       description: |
-        Сортировка: `release_date` по убыванию, альбомы без даты — в конце.
+        Сортировка: `release_year` по убыванию, альбомы без года — в конце.
       operationId: listArtistAlbums
       parameters:
         - $ref: '#/components/parameters/ArtistId'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           description: Страница альбомов
@@ -342,15 +342,17 @@ components:
         type: integer
         minimum: 0
         default: 20
-    PageToken:
-      name: page_token
+    Offset:
+      name: offset
       in: query
       required: false
       description: |
-        `next_page_token` из предыдущего ответа. Остальные параметры запроса
-        должны совпадать с исходным запросом.
+        Число пропускаемых элементов. Для следующей страницы передайте
+        `next_offset` из ответа, сохранив остальные параметры запроса.
       schema:
-        type: string
+        type: integer
+        minimum: 0
+        default: 0
 
   responses:
     InvalidArgument:
@@ -479,17 +481,12 @@ components:
         - $ref: '#/components/schemas/Image'
         - type: 'null'
 
-    ReleaseDate:
-      type: [string, 'null']
-      description: |
-        Формат зависит от `release_date_precision`:
-        `YYYY` (year), `YYYY-MM` (month), `YYYY-MM-DD` (day).
-      pattern: '^\d{4}(-\d{2}(-\d{2})?)?$'
-      example: '1997-05-21'
-
-    ReleaseDatePrecision:
-      type: [string, 'null']
-      enum: [year, month, day, null]
+    ReleaseYear:
+      type: [integer, 'null']
+      description: Год релиза. `null`, если год неизвестен.
+      minimum: 1
+      maximum: 9999
+      example: 1997
 
     AlbumType:
       type: string
@@ -536,7 +533,7 @@ components:
 
     AlbumRef:
       type: object
-      required: [name, title, album_type, release_date, release_date_precision, cover]
+      required: [name, title, album_type, release_year, cover]
       properties:
         name:
           type: string
@@ -546,10 +543,8 @@ components:
           type: string
         album_type:
           $ref: '#/components/schemas/AlbumType'
-        release_date:
-          $ref: '#/components/schemas/ReleaseDate'
-        release_date_precision:
-          $ref: '#/components/schemas/ReleaseDatePrecision'
+        release_year:
+          $ref: '#/components/schemas/ReleaseYear'
         cover:
           $ref: '#/components/schemas/NullableImage'
 
@@ -647,7 +642,7 @@ components:
           type: integer
           minimum: 1
 
-    # ---------- Ответы List-методов (AIP-132, AIP-158) ----------
+    # ---------- Ответы List-методов (числовое смещение) ----------
 
     ListArtistsResponse:
       type: object
@@ -657,9 +652,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ArtistSummary'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
@@ -673,9 +670,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AlbumSummary'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
@@ -689,9 +688,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TrackSummary'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
@@ -705,9 +706,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ArtistTrackItem'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
