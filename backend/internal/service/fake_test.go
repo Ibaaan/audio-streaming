@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -43,12 +44,25 @@ func first[T any](items []T, match func(T) bool) (T, error) {
 }
 
 func (f *fakeRepo) AddTrack(ctx context.Context, t *catalog.Track) error {
+	if t.Quality == "" {
+		t.Quality = catalog.QualityLow
+	}
 	f.tracks = append(f.tracks, *t)
 	return nil
 }
 
 func (f *fakeRepo) GetTrack(ctx context.Context, id uuid.UUID) (catalog.Track, error) {
 	return first(f.tracks, func(t catalog.Track) bool { return t.ID == id })
+}
+
+func (f *fakeRepo) ListTracks(ctx context.Context) ([]catalog.TrackSummary, error) {
+	tracks := make([]catalog.TrackSummary, 0, len(f.tracks))
+	for _, track := range f.tracks {
+		tracks = append(tracks, catalog.TrackSummary{
+			Track: track,
+		})
+	}
+	return tracks, nil
 }
 
 func (f *fakeRepo) FindTrack(
@@ -129,4 +143,303 @@ func (f *fakeRepo) FindImageByPath(ctx context.Context, storagePath string) (cat
 	return first(f.images, func(i catalog.Image) bool {
 		return i.StoragePath == storagePath
 	})
+}
+
+func (f *fakeRepo) GetArtistByTrackId(
+	ctx context.Context, id uuid.UUID,
+) ([]catalog.TrackArtistCredit, error) {
+	credits := append([]catalog.TrackArtist{}, f.trackArtists...)
+	sort.Slice(credits, func(i, j int) bool {
+		return credits[i].Position < credits[j].Position
+	})
+	result := []catalog.TrackArtistCredit{}
+	for _, credit := range credits {
+		if credit.TrackID != id {
+			continue
+		}
+		artist, err := f.GetArtist(ctx, credit.ArtistID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, catalog.TrackArtistCredit{Artist: artist, Role: credit.Role})
+	}
+	return result, nil
+}
+
+func (f *fakeRepo) GetAlbumByTrackId(
+	ctx context.Context, id uuid.UUID,
+) ([]catalog.TrackAlbumAppearance, error) {
+	result := []catalog.TrackAlbumAppearance{}
+	for _, link := range f.albumTracks {
+		if link.TrackID != id {
+			continue
+		}
+		album, err := f.GetAlbum(ctx, link.AlbumID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, catalog.TrackAlbumAppearance{
+			Album: album, DiscNo: link.DiscNo, TrackNo: link.TrackNo,
+		})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].CreatedAt.Equal(result[j].CreatedAt) {
+			return result[i].ID.String() < result[j].ID.String()
+		}
+		return result[i].CreatedAt.Before(result[j].CreatedAt)
+	})
+	return result, nil
+}
+
+func (f *fakeRepo) ListArtistTracks(
+	ctx context.Context, id uuid.UUID, limit, offset int,
+) ([]catalog.ArtistTrack, int, error) {
+	result := []catalog.ArtistTrack{}
+	for _, credit := range f.trackArtists {
+		if credit.ArtistID != id {
+			continue
+		}
+		track, err := f.GetTrack(ctx, credit.TrackID)
+		if err != nil {
+			return nil, 0, err
+		}
+		overview, err := f.trackOverview(ctx, track)
+		if err != nil {
+			return nil, 0, err
+		}
+		result = append(result, catalog.ArtistTrack{TrackOverview: overview, Role: credit.Role})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		a, _ := f.GetAlbumByTrackId(ctx, result[i].ID)
+		b, _ := f.GetAlbumByTrackId(ctx, result[j].ID)
+		var ay, by, ad, bd, at, bt int16
+		if len(a) > 0 {
+			ad, at = a[0].DiscNo, a[0].TrackNo
+			if a[0].ReleaseYear != nil {
+				ay = *a[0].ReleaseYear
+			}
+		}
+		if len(b) > 0 {
+			bd, bt = b[0].DiscNo, b[0].TrackNo
+			if b[0].ReleaseYear != nil {
+				by = *b[0].ReleaseYear
+			}
+		}
+		if ay != by {
+			return ay > by
+		}
+		if (ad == 0) != (bd == 0) {
+			return ad != 0
+		}
+		if ad != bd {
+			return ad < bd
+		}
+		if at != bt {
+			return at < bt
+		}
+		return result[i].ID.String() < result[j].ID.String()
+	})
+	total := len(result)
+	start := min(offset, total)
+	end := start + min(limit, total-start)
+	return result[start:end], total, nil
+}
+
+func (f *fakeRepo) GetArtistStats(ctx context.Context, id uuid.UUID) (catalog.ArtistStats, error) {
+	if _, err := f.GetArtist(ctx, id); err != nil {
+		return catalog.ArtistStats{}, err
+	}
+	stats := catalog.ArtistStats{}
+	for _, credit := range f.albumArtists {
+		if credit.ArtistID == id {
+			stats.AlbumCount++
+		}
+	}
+	for _, credit := range f.trackArtists {
+		if credit.ArtistID == id {
+			stats.TrackCount++
+		}
+	}
+	return stats, nil
+}
+
+func (f *fakeRepo) ListArtistAlbums(
+	ctx context.Context, id uuid.UUID, limit, offset int,
+) ([]catalog.AlbumOverview, int, error) {
+	result := []catalog.AlbumOverview{}
+	for _, credit := range f.albumArtists {
+		if credit.ArtistID != id {
+			continue
+		}
+		album, err := f.GetAlbum(ctx, credit.AlbumID)
+		if err != nil {
+			return nil, 0, err
+		}
+		item := catalog.AlbumOverview{Album: album, Artists: []catalog.Artist{}}
+		credits := append([]catalog.AlbumArtist{}, f.albumArtists...)
+		sort.Slice(credits, func(i, j int) bool {
+			return credits[i].Position < credits[j].Position
+		})
+		for _, link := range credits {
+			if link.AlbumID != album.ID {
+				continue
+			}
+			artist, err := f.GetArtist(ctx, link.ArtistID)
+			if err != nil {
+				return nil, 0, err
+			}
+			item.Artists = append(item.Artists, artist)
+		}
+		for _, link := range f.albumTracks {
+			if link.AlbumID == album.ID {
+				item.TrackCount++
+			}
+		}
+		result = append(result, item)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		a, b := result[i], result[j]
+		if a.ReleaseYear == nil && b.ReleaseYear != nil {
+			return false
+		}
+		if a.ReleaseYear != nil && b.ReleaseYear == nil {
+			return true
+		}
+		if a.ReleaseYear != nil && b.ReleaseYear != nil && *a.ReleaseYear != *b.ReleaseYear {
+			return *a.ReleaseYear > *b.ReleaseYear
+		}
+		return a.ID.String() < b.ID.String()
+	})
+	total := len(result)
+	start := min(offset, total)
+	end := start + min(limit, total-start)
+	return result[start:end], total, nil
+}
+
+func (f *fakeRepo) GetAlbumDetails(
+	ctx context.Context, id uuid.UUID,
+) (catalog.AlbumDetails, error) {
+	album, err := f.GetAlbum(ctx, id)
+	if err != nil {
+		return catalog.AlbumDetails{}, err
+	}
+	result := catalog.AlbumDetails{
+		Album: album, Artists: []catalog.Artist{}, Tracks: []catalog.AlbumTrackEntry{},
+	}
+	credits := append([]catalog.AlbumArtist{}, f.albumArtists...)
+	sort.Slice(credits, func(i, j int) bool {
+		return credits[i].Position < credits[j].Position
+	})
+	for _, credit := range credits {
+		if credit.AlbumID != id {
+			continue
+		}
+		artist, err := f.GetArtist(ctx, credit.ArtistID)
+		if err != nil {
+			return catalog.AlbumDetails{}, err
+		}
+		result.Artists = append(result.Artists, artist)
+	}
+	for _, link := range f.albumTracks {
+		if link.AlbumID != id {
+			continue
+		}
+		track, err := f.GetTrack(ctx, link.TrackID)
+		if err != nil {
+			return catalog.AlbumDetails{}, err
+		}
+		artists, err := f.GetArtistByTrackId(ctx, track.ID)
+		if err != nil {
+			return catalog.AlbumDetails{}, err
+		}
+		result.Tracks = append(result.Tracks, catalog.AlbumTrackEntry{
+			Track: track, DiscNo: link.DiscNo, TrackNo: link.TrackNo, Artists: artists,
+		})
+	}
+	sort.Slice(result.Tracks, func(i, j int) bool {
+		a, b := result.Tracks[i], result.Tracks[j]
+		if a.DiscNo != b.DiscNo {
+			return a.DiscNo < b.DiscNo
+		}
+		return a.TrackNo < b.TrackNo
+	})
+	return result, nil
+}
+
+func fakeSearch[T any](
+	items []T, query string, limit, offset int, label func(T) string,
+) ([]T, int) {
+	result := []T{}
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(label(item)), strings.ToLower(query)) {
+			result = append(result, item)
+		}
+	}
+	sort.SliceStable(result, func(i, j int) bool {
+		return strings.ToLower(label(result[i])) < strings.ToLower(label(result[j]))
+	})
+	total := len(result)
+	start := min(offset, total)
+	return result[start : start+min(limit, total-start)], total
+}
+
+func (f *fakeRepo) SearchArtists(
+	ctx context.Context, query string, limit, offset int,
+) ([]catalog.Artist, int, error) {
+	rows, total := fakeSearch(f.artists, query, limit, offset,
+		func(item catalog.Artist) string { return item.Name },
+	)
+	return rows, total, nil
+}
+func (f *fakeRepo) SearchAlbums(
+	ctx context.Context, query string, limit, offset int,
+) ([]catalog.AlbumOverview, int, error) {
+	rows, total := fakeSearch(f.albums, query, limit, offset,
+		func(item catalog.Album) string { return item.Title },
+	)
+	result := []catalog.AlbumOverview{}
+	for _, album := range rows {
+		details, err := f.GetAlbumDetails(ctx, album.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		result = append(result, catalog.AlbumOverview{
+			Album: album, Artists: details.Artists, TrackCount: len(details.Tracks),
+		})
+	}
+	return result, total, nil
+}
+func (f *fakeRepo) SearchTracks(
+	ctx context.Context, query string, limit, offset int,
+) ([]catalog.TrackOverview, int, error) {
+	rows, total := fakeSearch(f.tracks, query, limit, offset,
+		func(item catalog.Track) string { return item.Title },
+	)
+	result := []catalog.TrackOverview{}
+	for _, track := range rows {
+		overview, err := f.trackOverview(ctx, track)
+		if err != nil {
+			return nil, 0, err
+		}
+		result = append(result, overview)
+	}
+	return result, total, nil
+}
+
+func (f *fakeRepo) trackOverview(
+	ctx context.Context, track catalog.Track,
+) (catalog.TrackOverview, error) {
+	artists, err := f.GetArtistByTrackId(ctx, track.ID)
+	if err != nil {
+		return catalog.TrackOverview{}, err
+	}
+	albums, err := f.GetAlbumByTrackId(ctx, track.ID)
+	if err != nil {
+		return catalog.TrackOverview{}, err
+	}
+	result := catalog.TrackOverview{Track: track, Artists: artists}
+	if len(albums) > 0 {
+		result.Album = &albums[0]
+	}
+	return result, nil
 }

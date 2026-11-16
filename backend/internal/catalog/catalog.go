@@ -75,6 +75,7 @@ type AlbumArtist struct {
 }
 
 type Track struct {
+	Quality    Quality   `db:"quality" json:"quality"`
 	ID         uuid.UUID `db:"id"          json:"id"`
 	Title      string    `db:"title"       json:"title"`
 	DurationMs int32     `db:"duration_ms" json:"duration_ms"`
@@ -100,16 +101,11 @@ type AlbumTrack struct {
 // ErrNotFound is returned by lookups that match no row.
 var ErrNotFound = errors.New("catalog: not found")
 
-// TrackSummary is a track joined with what a track list shows next to
-// it. Artist joins the track's artists in position order. Album and
-// ReleaseYear come from one album the track is on, and are nil if it is
-// on none.
+// TrackSummary is a track together with its primary artist and album.
+// Artist is the first track artist by position. Album is nil when the
+// track is not part of an album.
 type TrackSummary struct {
-	ID          uuid.UUID `db:"id"           json:"id"`
-	Title       string    `db:"title"        json:"title"`
-	Artist      string    `db:"artist"       json:"artist"`
-	Album       *string   `db:"album"        json:"album,omitempty"`
-	ReleaseYear *int16    `db:"release_year" json:"release_year,omitempty"`
-	DurationMs  int32     `db:"duration_ms"  json:"duration_ms"`
-	CreatedAt   time.Time `db:"created_at"   json:"created_at"`
+	Track  Track
+	Artist Artist
+	Album  *Album
 }

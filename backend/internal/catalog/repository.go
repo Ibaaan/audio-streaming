@@ -13,31 +13,35 @@ import (
 // *postgres.Repository satisfies all of them.
 
 type TrackRepository interface {
+	ListArtistTracks(
+		ctx context.Context, artistID uuid.UUID, limit, offset int,
+	) ([]ArtistTrack, int, error)
 	AddTrack(ctx context.Context, t *Track) error
 	GetTrack(ctx context.Context, id uuid.UUID) (Track, error)
 	FindTrack(ctx context.Context, title string, artistID uuid.UUID) (Track, error)
+	ListTracks(ctx context.Context) ([]TrackSummary, error)
 	AddTrackArtist(ctx context.Context, ta TrackArtist) error
 }
 
-// TrackLister reads the catalog for display. It is kept out of
-// Repository because importing tracks never needs it.
-type TrackLister interface {
-	// ListTracks returns every track, newest first.
-	ListTracks(ctx context.Context) ([]TrackSummary, error)
-}
-
 type ArtistRepository interface {
+	GetArtistStats(ctx context.Context, id uuid.UUID) (ArtistStats, error)
+	ListArtistAlbums(
+		ctx context.Context, id uuid.UUID, limit, offset int,
+	) ([]AlbumOverview, int, error)
 	AddArtist(ctx context.Context, a *Artist) error
 	GetArtist(ctx context.Context, id uuid.UUID) (Artist, error)
 	FindArtistByName(ctx context.Context, name string) (Artist, error)
+	GetArtistByTrackId(ctx context.Context, id uuid.UUID) ([]TrackArtistCredit, error)
 }
 
 type AlbumRepository interface {
+	GetAlbumDetails(ctx context.Context, id uuid.UUID) (AlbumDetails, error)
 	AddAlbum(ctx context.Context, a *Album) error
 	GetAlbum(ctx context.Context, id uuid.UUID) (Album, error)
 	FindAlbum(ctx context.Context, title string, artistID uuid.UUID) (Album, error)
 	AddAlbumArtist(ctx context.Context, aa AlbumArtist) error
 	AddAlbumTrack(ctx context.Context, at AlbumTrack) error
+	GetAlbumByTrackId(ctx context.Context, id uuid.UUID) ([]TrackAlbumAppearance, error)
 }
 
 type ImageRepository interface {
@@ -46,11 +50,20 @@ type ImageRepository interface {
 	FindImageByPath(ctx context.Context, storagePath string) (Image, error)
 }
 
+// SearchRepository performs literal, case-insensitive substring searches.
+// Results are ordered by name/title, then ID, for stable offset pagination.
+type SearchRepository interface {
+	SearchArtists(ctx context.Context, query string, limit, offset int) ([]Artist, int, error)
+	SearchAlbums(ctx context.Context, query string, limit, offset int) ([]AlbumOverview, int, error)
+	SearchTracks(ctx context.Context, query string, limit, offset int) ([]TrackOverview, int, error)
+}
+
 // Repository is every repository together, for code that touches the whole
 // catalog, such as importing a track. It lives here rather than with its
 // users so that implementations can name it in WithinTx's callback
 // without importing them.
 type Repository interface {
+	SearchRepository
 	TrackRepository
 	ArtistRepository
 	AlbumRepository

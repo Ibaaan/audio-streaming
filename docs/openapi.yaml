@@ -10,22 +10,21 @@ info:
     `:custom`-методы).
 
     **Общие соглашения**
-    - Ресурсы идентифицируются полем `name` — полным именем ресурса вида
-      `artists/{uuid}`, `albums/{uuid}`, `tracks/{uuid}` (AIP-122).
-      Поля `id` у ресурсов нет; UUID — последний сегмент имени.
+    - Ресурсы идентифицируются полем `id` — UUID без префикса типа ресурса.
     - Имена полей — `lower_snake_case`, значения перечислений —
       `lower_snake_case`; только `reason` ошибок — `UPPER_SNAKE_CASE`.
     - Временные метки (`create_time`, `update_time`) — RFC 3339, UTC.
     - Длительности (`duration_ms`) — целое число миллисекунд.
     - Клиенту отдаются только объекты со статусом `ready`. Треки и изображения
       в обработке или с ошибкой пайплайна в выдачу не попадают.
-    - Списки пагинируются токенами (AIP-158): запрос принимает `page_size`
-      и `page_token`, ответ содержит `next_page_token` (отсутствует на
-      последней странице) и `total_size`. `page_size` по умолчанию 20;
-      значения больше 100 приводятся к 100; `0` означает значение по
-      умолчанию; отрицательное значение — ошибка `400` с `reason` = `INVALID_PARAMETER`.
-      Токен непрозрачен и действителен только для того же запроса, который
-      его выдал.
+    - Списки пагинируются числовым смещением: запрос принимает `page_size`
+      и `offset` (число пропускаемых элементов, по умолчанию 0), ответ содержит
+      `next_offset` (отсутствует на последней странице) и `total_size`.
+      `next_offset` равен текущему `offset` плюс число возвращённых элементов.
+      `page_size` по умолчанию 20; значения больше 100 приводятся к 100;
+      `0` означает значение по умолчанию. Отрицательные `page_size` и `offset`
+      приводят к ошибке `400` с `reason` = `INVALID_PARAMETER`.
+      При `offset` не меньше `total_size` возвращается пустой список без `next_offset`.
     - Ошибки — JSON `{error: {code, message, reason, metadata}}`; клиент
       ориентируется на HTTP-статус и `reason`, а не на текст `message`.
     - Вложенные сущности встраиваются параметром `include` (список через
@@ -68,8 +67,7 @@ paths:
       description: |
         Возвращает только группы, запрошенные
         в `types`. `page_size` применяется к каждой группе отдельно, у каждой
-        группы свой `next_page_token`. `page_token` допустим только если в
-        `types` указан ровно один тип. Если ничего не найдено, возвращается
+        группы свой `next_offset`. `offset` применяется к каждой группе отдельно. Если ничего не найдено, возвращается
         `200` с пустыми списками.
       operationId: search
       parameters:
@@ -95,7 +93,7 @@ paths:
               $ref: '#/components/schemas/SearchType'
           example: [artist, track]
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           description: Результаты поиска
@@ -151,14 +149,14 @@ paths:
       summary: Треки артиста
       description: |
         Все треки, где артист указан в `artists` в любой роли.
-        Сортировка: дата релиза альбома (новые первыми), затем `disc_number`,
+        Сортировка: год релиза альбома (новые первыми), затем `disc_number`,
         `track_number`. У существующего артиста без треков возвращается пустой
         список.
       operationId: listArtistTracks
       parameters:
         - $ref: '#/components/parameters/ArtistId'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           description: Страница треков
@@ -178,12 +176,12 @@ paths:
       tags: [Artists]
       summary: Альбомы артиста
       description: |
-        Сортировка: `release_date` по убыванию, альбомы без даты — в конце.
+        Сортировка: `release_year` по убыванию, альбомы без года — в конце.
       operationId: listArtistAlbums
       parameters:
         - $ref: '#/components/parameters/ArtistId'
         - $ref: '#/components/parameters/PageSize'
-        - $ref: '#/components/parameters/PageToken'
+        - $ref: '#/components/parameters/Offset'
       responses:
         '200':
           description: Страница альбомов
@@ -234,6 +232,72 @@ paths:
         '500':
           $ref: '#/components/responses/Internal'
 
+  /v1/tracks:
+    post:
+      tags: [Tracks]
+      summary: Загрузка и импорт трека
+      description: |
+        Принимает исходный аудиофайл в multipart-поле `file`. Импорт выполняется
+        синхронно: извлекаются метаданные и качество, файл сохраняется в S3,
+        затем сохраняется запись каталога. Ответ `201` возвращается после
+        успешного сохранения трека. Общий размер тела запроса — не более 1 ГиБ.
+        В метаданных файла должны присутствовать название и артист;
+        для файла с альбомом также требуется номер трека.
+      operationId: uploadTrack
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Исходный аудиофайл с метаданными
+      responses:
+        '201':
+          description: Трек создан и доступен по URL из заголовка Location
+          headers:
+            Location:
+              required: true
+              description: Относительный URL созданного трека
+              schema:
+                type: string
+                format: uri-reference
+              example: /v1/tracks/550e8400-e29b-41d4-a716-446655440000
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadTrackResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '409':
+          description: Трек с таким названием и артистом уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: 409
+                  message: Track already exists
+                  reason: ALREADY_EXISTS
+        '413':
+          description: Тело запроса превышает 1 ГиБ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: 413
+                  message: file is larger than 1 GiB
+                  reason: INVALID_PARAMETER
+        '500':
+          $ref: '#/components/responses/Internal'
+
   /v1/tracks/{track}:
     get:
       tags: [Tracks]
@@ -261,11 +325,12 @@ paths:
       summary: Ссылка на аудиопоток
       description: |
         Возвращает в JSON временную presigned-ссылку на объект в S3:
-        `media-public/audio/{shard}/{id}/v{pipeline_version}/{lossless.flac|320.mp3}`.
+        `audio/{id}{extension}`.
+        Для трека хранится один исходный файл. Выбор качества не поддерживается;
+        поле `quality` в ответе сообщает сохранённую категорию качества.
 
         Фронтенд подставляет `url` в `<audio src>` и дальше работает
-        напрямую с S3. S3 отдаёт `Content-Type` (`audio/flac` или
-        `audio/mpeg`) и поддерживает `Range`-запросы (`206 Partial Content`),
+        напрямую с S3. S3 отдаёт `Content-Type` исходного формата и поддерживает `Range`-запросы (`206 Partial Content`),
         поэтому перемотка работает без участия бэкенда. Когда ссылка
         истекает (`expire_time`), клиент запрашивает новую и продолжает
         с текущей позиции.
@@ -275,15 +340,6 @@ paths:
       operationId: streamTrack
       parameters:
         - $ref: '#/components/parameters/TrackId'
-        - name: quality
-          in: query
-          required: false
-          description: |
-            `lossless` — FLAC 44,1 кГц / 16 бит, стерео.
-            `mp3` — MP3 320 kbps.
-          schema:
-            $ref: '#/components/schemas/Quality'
-            default: mp3
       responses:
         '200':
           description: Ссылка на аудиофайл
@@ -311,7 +367,7 @@ components:
       name: artist
       in: path
       required: true
-      description: UUID артиста (последний сегмент имени `artists/{artist}`)
+      description: UUID артиста
       schema:
         type: string
         format: uuid
@@ -319,7 +375,7 @@ components:
       name: album
       in: path
       required: true
-      description: UUID альбома (последний сегмент имени `albums/{album}`)
+      description: UUID альбома
       schema:
         type: string
         format: uuid
@@ -327,7 +383,7 @@ components:
       name: track
       in: path
       required: true
-      description: UUID трека (последний сегмент имени `tracks/{track}`)
+      description: UUID трека
       schema:
         type: string
         format: uuid
@@ -342,15 +398,17 @@ components:
         type: integer
         minimum: 0
         default: 20
-    PageToken:
-      name: page_token
+    Offset:
+      name: offset
       in: query
       required: false
       description: |
-        `next_page_token` из предыдущего ответа. Остальные параметры запроса
-        должны совпадать с исходным запросом.
+        Число пропускаемых элементов. Для следующей страницы передайте
+        `next_offset` из ответа, сохранив остальные параметры запроса.
       schema:
-        type: string
+        type: integer
+        minimum: 0
+        default: 0
 
   responses:
     InvalidArgument:
@@ -375,10 +433,10 @@ components:
           example:
             error:
               code: 404
-              message: "Album albums/4d5e... not found"
+              message: "Album 4d5e0000-0000-0000-0000-000000000001 not found"
               reason: RESOURCE_NOT_FOUND
               metadata:
-                resource: albums/4d5e...
+                resource: 4d5e0000-0000-0000-0000-000000000001
     TrackNotReady:
       description: Трек существует, но ещё обрабатывается пайплайном
       content:
@@ -388,10 +446,10 @@ components:
           example:
             error:
               code: 409
-              message: "Track tracks/7f6e... is still processing"
+              message: "Track 7f6e0000-0000-0000-0000-000000000001 is still processing"
               reason: TRACK_NOT_READY
               metadata:
-                track: tracks/7f6e...
+                track: 7f6e0000-0000-0000-0000-000000000001
     Internal:
       description: Внутренняя ошибка сервера
       content:
@@ -430,6 +488,7 @@ components:
               enum:
                 - INVALID_PARAMETER
                 - RESOURCE_NOT_FOUND
+                - ALREADY_EXISTS
                 - TRACK_NOT_READY
                 - INTERNAL_ERROR
             metadata:
@@ -479,17 +538,12 @@ components:
         - $ref: '#/components/schemas/Image'
         - type: 'null'
 
-    ReleaseDate:
-      type: [string, 'null']
-      description: |
-        Формат зависит от `release_date_precision`:
-        `YYYY` (year), `YYYY-MM` (month), `YYYY-MM-DD` (day).
-      pattern: '^\d{4}(-\d{2}(-\d{2})?)?$'
-      example: '1997-05-21'
-
-    ReleaseDatePrecision:
-      type: [string, 'null']
-      enum: [year, month, day, null]
+    ReleaseYear:
+      type: [integer, 'null']
+      description: Год релиза. `null`, если год неизвестен.
+      minimum: 1
+      maximum: 9999
+      example: 1997
 
     AlbumType:
       type: string
@@ -502,7 +556,18 @@ components:
 
     Quality:
       type: string
-      enum: [lossless, mp3]
+      description: |
+        Категория качества исходного файла; это не список доступных вариантов.
+        `lossless` — название верхней категории, а не гарантия кодирования без потерь.
+        Настоящие lossless-кодеки (FLAC, ALAC, PCM/WAV, WavPack, APE и др.)
+        всегда относятся к верхней категории.
+        Пороги среднего битрейта (кбит/с):
+        - AAC, Vorbis, WMA: lossless >= 256, optimal >= 192, иначе low.
+        - MP3 и остальные lossy-кодеки: lossless >= 320, optimal >= 192, иначе low.
+        - Opus: lossless >= 192, optimal >= 128, иначе low.
+        64 кбит/с относится к low. Неизвестный битрейт lossy-файла — low.
+        Категория определяется при импорте; перекодирование не выполняется.
+      enum: [low, optimal, lossless]
 
     SearchType:
       type: string
@@ -512,16 +577,16 @@ components:
 
     ArtistRef:
       type: object
-      required: [name, display_name]
+      required: [id, display_name]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `artists/{uuid}`
-          pattern: '^artists/[0-9a-f-]{36}$'
+          description: UUID артиста
+          format: uuid
         display_name:
           type: string
       example:
-        name: artists/9a8b7c6d-0000-0000-0000-000000000001
+        id: 9a8b7c6d-0000-0000-0000-000000000001
         display_name: Radiohead
 
     TrackArtist:
@@ -536,20 +601,18 @@ components:
 
     AlbumRef:
       type: object
-      required: [name, title, album_type, release_date, release_date_precision, cover]
+      required: [id, title, album_type, release_year, cover]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `albums/{uuid}`
-          pattern: '^albums/[0-9a-f-]{36}$'
+          description: UUID альбома
+          format: uuid
         title:
           type: string
         album_type:
           $ref: '#/components/schemas/AlbumType'
-        release_date:
-          $ref: '#/components/schemas/ReleaseDate'
-        release_date_precision:
-          $ref: '#/components/schemas/ReleaseDatePrecision'
+        release_year:
+          $ref: '#/components/schemas/ReleaseYear'
         cover:
           $ref: '#/components/schemas/NullableImage'
 
@@ -571,12 +634,12 @@ components:
     ArtistSummary:
       type: object
       description: Артист в списках
-      required: [name, display_name, image]
+      required: [id, display_name, image]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `artists/{uuid}`
-          pattern: '^artists/[0-9a-f-]{36}$'
+          description: UUID артиста
+          format: uuid
         display_name:
           type: string
         image:
@@ -585,18 +648,20 @@ components:
     TrackSummary:
       type: object
       description: Трек в списках
-      required: [name, title, duration_ms, artists, album, disc_number, track_number]
+      required: [id, title, duration_ms, quality, artists, album, disc_number, track_number]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `tracks/{uuid}`
-          pattern: '^tracks/[0-9a-f-]{36}$'
+          description: UUID трека
+          format: uuid
         title:
           type: string
         duration_ms:
           type: integer
           minimum: 0
           example: 213500
+        quality:
+          $ref: '#/components/schemas/Quality'
         artists:
           type: array
           items:
@@ -624,18 +689,20 @@ components:
     AlbumTrack:
       type: object
       description: Трек внутри альбома (без вложенного альбома)
-      required: [name, title, duration_ms, artists, disc_number, track_number]
+      required: [id, title, duration_ms, quality, artists, disc_number, track_number]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `tracks/{uuid}`
-          pattern: '^tracks/[0-9a-f-]{36}$'
+          description: UUID трека
+          format: uuid
         title:
           type: string
         duration_ms:
           type: integer
           minimum: 0
           example: 213500
+        quality:
+          $ref: '#/components/schemas/Quality'
         artists:
           type: array
           items:
@@ -647,7 +714,7 @@ components:
           type: integer
           minimum: 1
 
-    # ---------- Ответы List-методов (AIP-132, AIP-158) ----------
+    # ---------- Ответы List-методов (числовое смещение) ----------
 
     ListArtistsResponse:
       type: object
@@ -657,9 +724,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ArtistSummary'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
@@ -673,9 +742,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AlbumSummary'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
@@ -689,9 +760,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/TrackSummary'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
@@ -705,9 +778,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ArtistTrackItem'
-        next_page_token:
-          type: string
-          description: Отсутствует на последней странице
+        next_offset:
+          type: integer
+          minimum: 0
+          description: Смещение следующей страницы. Отсутствует на последней странице.
+          example: 20
         total_size:
           type: integer
           minimum: 0
@@ -728,12 +803,12 @@ components:
 
     Artist:
       type: object
-      required: [name, display_name, image, stats, create_time, update_time]
+      required: [id, display_name, image, stats, create_time, update_time]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `artists/{uuid}`
-          pattern: '^artists/[0-9a-f-]{36}$'
+          description: UUID артиста
+          format: uuid
         display_name:
           type: string
         image:
@@ -814,14 +889,14 @@ components:
         url:
           type: string
           format: uri
-          description: Presigned URL аудиофайла в S3
-          example: https://s3.example.com/media-public/audio/e7/7f6e...e7/v1/320.mp3?X-Amz-Expires=3600&X-Amz-Signature=...
+          description: Presigned URL исходного аудиофайла в S3
+          example: https://s3.example.com/media-public/audio/7f6e0000-0000-0000-0000-000000000001.mp3?X-Amz-Expires=3600
         quality:
           $ref: '#/components/schemas/Quality'
         content_type:
           type: string
           description: MIME-тип файла
-          enum: [audio/flac, audio/mpeg]
+          example: audio/mpeg
         expire_time:
           type: string
           format: date-time
@@ -829,13 +904,8 @@ components:
 
     TrackAudio:
       type: object
-      required: [qualities, loudness_lufs, true_peak_db]
+      required: [loudness_lufs, true_peak_db]
       properties:
-        qualities:
-          type: array
-          description: Доступные значения `quality` для `/stream`
-          items:
-            $ref: '#/components/schemas/Quality'
         loudness_lufs:
           type: number
           description: |
@@ -848,20 +918,33 @@ components:
           maximum: 0
           example: -1.0
 
+    UploadTrackResponse:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID созданного трека
+      example:
+        id: 550e8400-e29b-41d4-a716-446655440000
+
     Track:
       type: object
-      required: [name, title, duration_ms, artists, albums, audio, create_time, update_time]
+      required: [id, title, duration_ms, quality, artists, albums, audio, create_time, update_time]
       properties:
-        name:
+        id:
           type: string
-          description: Имя ресурса `tracks/{uuid}`
-          pattern: '^tracks/[0-9a-f-]{36}$'
+          description: UUID трека
+          format: uuid
         title:
           type: string
         duration_ms:
           type: integer
           minimum: 0
           example: 213500
+        quality:
+          $ref: '#/components/schemas/Quality'
         artists:
           type: array
           items:

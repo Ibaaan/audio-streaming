@@ -9,6 +9,7 @@ import (
 // represent the audio metadata
 type Record struct {
 	TrackID    uuid.UUID
+	Quality    Quality
 	SourceInfo SourceInfo
 	Tags       Tags
 	Cover      *Cover // nil if the file has no embedded artwork
@@ -19,6 +20,7 @@ func (a Record) Duration() time.Duration { return a.SourceInfo.Duration() }
 // technical properties of the source audio stream
 type SourceInfo struct {
 	Codec      string
+	BitRate    int64 // Average audio stream bitrate in bits/second; 0 when unknown.
 	Lossless   bool
 	SampleRate int
 	BitDepth   int

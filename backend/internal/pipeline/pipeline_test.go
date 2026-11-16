@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -138,16 +139,19 @@ func TestRunUploadsAudioAndSavesRecord(t *testing.T) {
 	env := newTestEnv(t)
 	path := writeFile(t, "Duality.FLAC", audioData)
 
-	err := env.p.Run(context.Background(), path)
+	id, err := env.p.Run(context.Background(), path)
 
 	require.NoError(t, err)
 	require.Len(t, env.records.saved, 1)
 	rec := env.records.saved[0]
+	assert.Equal(t, rec.TrackID, id)
+	assert.NotEqual(t, uuid.Nil, id)
 	key := "audio/" + rec.TrackID.String() + ".flac"
 	require.Contains(t, env.blobs.blobs, key)
 	assert.Equal(t, audioData, env.blobs.blobs[key].data)
 	assert.Equal(t, "audio/flac", env.blobs.blobs[key].contentType)
 	assert.Equal(t, "Duality", rec.Tags.Title)
+	assert.Equal(t, audio.QualityLossless, rec.Quality)
 	assert.Equal(t, int64(44100*252), rec.SourceInfo.Samples)
 }
 
@@ -157,7 +161,7 @@ func TestRunPassesCoverToRecord(t *testing.T) {
 	env.meta.cover = cover
 	path := writeFile(t, "a.flac", audioData)
 
-	err := env.p.Run(context.Background(), path)
+	_, err := env.p.Run(context.Background(), path)
 
 	require.NoError(t, err)
 	require.Len(t, env.records.saved, 1)
@@ -170,16 +174,17 @@ func TestRunReturnsSaveError(t *testing.T) {
 	env.records.err = saveErr
 	path := writeFile(t, "a.flac", audioData)
 
-	err := env.p.Run(context.Background(), path)
+	id, err := env.p.Run(context.Background(), path)
 
-	assert.ErrorIs(t, err, saveErr)
+	require.ErrorIs(t, err, saveErr)
+	assert.Equal(t, uuid.Nil, id)
 }
 
 func TestRunRejectsEmptyFile(t *testing.T) {
 	env := newTestEnv(t)
 	path := writeFile(t, "a.flac", nil)
 
-	err := env.p.Run(context.Background(), path)
+	_, err := env.p.Run(context.Background(), path)
 
 	require.ErrorIs(t, err, ErrInvalidSource)
 	assert.Empty(t, env.blobs.blobs)
@@ -191,7 +196,7 @@ func TestRunRejectsUnprobeableFile(t *testing.T) {
 	env.decoder.err = errors.New("ffprobe: no audio stream")
 	path := writeFile(t, "a.txt", []byte("not audio"))
 
-	err := env.p.Run(context.Background(), path)
+	_, err := env.p.Run(context.Background(), path)
 
 	require.ErrorIs(t, err, ErrInvalidSource)
 	assert.Empty(t, env.blobs.blobs)

@@ -24,6 +24,7 @@ type entry struct {
 	title      string
 	artist     string
 	durationMs int32
+	quality    catalog.Quality
 	album      *albumEntry // nil if the record has no album tag
 }
 
@@ -59,6 +60,16 @@ func newEntry(rec audio.Record, cover *catalog.Image) (entry, error) {
 		return entry{}, fmt.Errorf("%w: duration %dms out of range", ErrInvalidRecord, ms)
 	}
 	e.durationMs = int32(ms)
+	// Also classify direct Library.Save calls that bypass Pipeline.Run.
+	e.quality = catalog.Quality(audio.ClassifyQuality(rec.SourceInfo))
+	if rec.Quality != "" {
+		e.quality = catalog.Quality(rec.Quality)
+	}
+	switch e.quality {
+	case catalog.QualityLow, catalog.QualityOptimal, catalog.QualityLossless:
+	default:
+		return entry{}, fmt.Errorf("%w: invalid quality %q", ErrInvalidRecord, e.quality)
+	}
 
 	albumTitle := strings.TrimSpace(tags.Album)
 	if albumTitle == "" {
@@ -74,7 +85,7 @@ func newEntry(rec audio.Record, cover *catalog.Image) (entry, error) {
 		releaseYear: parseYear(tags.Date),
 		discNo:      1,
 		trackNo:     int16(tags.TrackNumber),
-		quality:     catalog.QualityOptimal, // TODO make this not static
+		quality:     e.quality,
 		cover:       cover,
 	}
 	if cover != nil && cover.StoragePath == "" {
@@ -85,9 +96,6 @@ func newEntry(rec audio.Record, cover *catalog.Image) (entry, error) {
 	}
 	if tags.DiscNumber > 0 && tags.DiscNumber <= math.MaxInt16 {
 		album.discNo = int16(tags.DiscNumber)
-	}
-	if rec.SourceInfo.Lossless {
-		album.quality = catalog.QualityLossless
 	}
 	e.album = &album
 	return e, nil

@@ -9,6 +9,7 @@ import (
 
 	"audio-streaming/internal/audio"
 	"audio-streaming/internal/catalog"
+	"audio-streaming/internal/dto"
 )
 
 // ErrTrackExists is returned by Save when the catalog already has a
@@ -24,6 +25,77 @@ type Library struct {
 
 func NewLibrary(repo catalog.Repository) *Library {
 	return &Library{repo: repo}
+}
+
+// ListTracks returns every track in the library, newest first.
+func (l *Library) ListTracks(ctx context.Context) ([]catalog.TrackSummary, error) {
+	return l.repo.ListTracks(ctx)
+}
+
+// HasTrack reports whether the library contains a track with id.
+func (l *Library) HasTrack(ctx context.Context, id uuid.UUID) (bool, error) {
+	_, err := l.repo.GetTrack(ctx, id)
+	if errors.Is(err, catalog.ErrNotFound) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("checking track: %w", err)
+	}
+	return true, nil
+}
+
+// GetTrack assembles the public response from track metadata and its credits.
+func (l *Library) GetTrack(ctx context.Context, id uuid.UUID) (dto.Track, error) {
+	track, err := l.repo.GetTrack(ctx, id)
+	if err != nil {
+		return dto.Track{}, fmt.Errorf("getting track: %w", err)
+	}
+	artists, err := l.repo.GetArtistByTrackId(ctx, track.ID)
+	if err != nil {
+		return dto.Track{}, fmt.Errorf("getting track artists: %w", err)
+	}
+	albums, err := l.repo.GetAlbumByTrackId(ctx, track.ID)
+	if err != nil {
+		return dto.Track{}, fmt.Errorf("getting track albums: %w", err)
+	}
+
+	result := dto.Track{
+		ID:         track.ID,
+		Title:      track.Title,
+		DurationMs: int(track.DurationMs),
+		Quality:    dto.Quality(track.Quality),
+		Artists:    make([]dto.TrackArtist, 0, len(artists)),
+		Albums:     make([]dto.TrackAlbum, 0, len(albums)),
+		Audio:      dto.TrackAudio{},
+		CreateTime: track.CreatedAt.UTC(),
+		UpdateTime: track.UpdatedAt.UTC(),
+	}
+	for _, artist := range artists {
+		role := dto.ArtistRoleMain
+		if artist.Role != nil {
+			role = dto.ArtistRole(*artist.Role)
+		}
+		result.Artists = append(result.Artists, dto.TrackArtist{
+			ID:          artist.ID,
+			DisplayName: artist.Name,
+			Role:        role,
+		})
+	}
+	for _, album := range albums {
+		ref := dto.AlbumRef{
+			ID: album.ID, Title: album.Title, AlbumType: dto.AlbumType(album.AlbumType),
+		}
+		if album.ReleaseYear != nil {
+			year := int(*album.ReleaseYear)
+			ref.ReleaseYear = &year
+		}
+		result.Albums = append(result.Albums, dto.TrackAlbum{
+			AlbumRef:    ref,
+			DiscNumber:  int(album.DiscNo),
+			TrackNumber: int(album.TrackNo),
+		})
+	}
+	return result, nil
 }
 
 // Save stores rec as a new track with ID rec.TrackId, in one
@@ -98,6 +170,7 @@ func addNewTrack(
 		ID:         e.trackID,
 		Title:      e.title,
 		DurationMs: e.durationMs,
+		Quality:    e.quality,
 	}
 	if err := tx.AddTrack(ctx, &track); err != nil {
 		return catalog.Track{}, fmt.Errorf("adding track: %w", err)
@@ -233,4 +306,13 @@ func findOrAddArtist(
 		return catalog.Artist{}, fmt.Errorf("adding artist: %w", err)
 	}
 	return artist, nil
+}
+
+// GetTrackQuality returns the classification of the single stored audio file.
+func (l *Library) GetTrackQuality(ctx context.Context, id uuid.UUID) (dto.Quality, error) {
+	track, err := l.repo.GetTrack(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return dto.Quality(track.Quality), nil
 }
