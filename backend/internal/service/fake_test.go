@@ -304,3 +304,47 @@ func (f *fakeRepo) ListArtistAlbums(
 	end := start + min(limit, total-start)
 	return result[start:end], total, nil
 }
+
+func (f *fakeRepo) GetAlbumDetails(ctx context.Context, id uuid.UUID) (catalog.AlbumDetails, error) {
+	album, err := f.GetAlbum(ctx, id)
+	if err != nil {
+		return catalog.AlbumDetails{}, err
+	}
+	result := catalog.AlbumDetails{Album: album, Artists: []catalog.Artist{}, Tracks: []catalog.AlbumTrackEntry{}}
+	credits := append([]catalog.AlbumArtist{}, f.albumArtists...)
+	sort.Slice(credits, func(i, j int) bool { return credits[i].Position < credits[j].Position })
+	for _, credit := range credits {
+		if credit.AlbumID != id {
+			continue
+		}
+		artist, err := f.GetArtist(ctx, credit.ArtistID)
+		if err != nil {
+			return catalog.AlbumDetails{}, err
+		}
+		result.Artists = append(result.Artists, artist)
+	}
+	for _, link := range f.albumTracks {
+		if link.AlbumID != id {
+			continue
+		}
+		track, err := f.GetTrack(ctx, link.TrackID)
+		if err != nil {
+			return catalog.AlbumDetails{}, err
+		}
+		artists, err := f.GetArtistByTrackId(ctx, track.ID)
+		if err != nil {
+			return catalog.AlbumDetails{}, err
+		}
+		result.Tracks = append(result.Tracks, catalog.AlbumTrackEntry{
+			Track: track, DiscNo: link.DiscNo, TrackNo: link.TrackNo, Artists: artists,
+		})
+	}
+	sort.Slice(result.Tracks, func(i, j int) bool {
+		a, b := result.Tracks[i], result.Tracks[j]
+		if a.DiscNo != b.DiscNo {
+			return a.DiscNo < b.DiscNo
+		}
+		return a.TrackNo < b.TrackNo
+	})
+	return result, nil
+}

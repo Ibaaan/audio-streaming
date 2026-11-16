@@ -111,3 +111,14 @@ func artistInclude(r *http.Request) ([]string, error) {
 	}
 	return include, nil
 }
+
+func albumInclude(r *http.Request) ([]string, error) {
+	values, present := r.URL.Query()["include"]
+	if !present {
+		return nil, nil
+	}
+	if len(values) != 1 || values[0] != "tracks" {
+		return nil, errors.New("include must contain only tracks once")
+	}
+	return []string{"tracks"}, nil
+}

@@ -35,6 +35,7 @@ type ArtistRepository interface {
 }
 
 type AlbumRepository interface {
+	GetAlbumDetails(ctx context.Context, id uuid.UUID) (AlbumDetails, error)
 	AddAlbum(ctx context.Context, a *Album) error
 	GetAlbum(ctx context.Context, id uuid.UUID) (Album, error)
 	FindAlbum(ctx context.Context, title string, artistID uuid.UUID) (Album, error)
