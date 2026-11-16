@@ -61,7 +61,6 @@ func Run(ctx context.Context) error {
 	mux.HandleFunc("GET /v1/artists/{artist}", handlers.GetArtist(lib))
 	mux.HandleFunc("GET /v1/artists/{artist}/albums", handlers.ListArtistAlbums(lib))
 	mux.HandleFunc("GET /v1/artists/{artist}/tracks", handlers.ListArtistTracks(lib))
-	mux.HandleFunc("GET /v1/tracks", handlers.ListTracks(lib))
 	mux.HandleFunc("POST /v1/tracks", handlers.UploadTrack(p, tmpDir))
 	mux.HandleFunc("GET /v1/tracks/{track}/stream",
 		handlers.StreamTrack(lib, store))
