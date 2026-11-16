@@ -18,7 +18,9 @@ func TestListArtistAlbumsOffset(t *testing.T) {
 		album := uuid.New()
 		y := int16(year)
 		repo.albums = append(repo.albums, catalog.Album{ID: album, ReleaseYear: &y})
-		repo.albumArtists = append(repo.albumArtists, catalog.AlbumArtist{AlbumID: album, ArtistID: id})
+		repo.albumArtists = append(repo.albumArtists, catalog.AlbumArtist{
+			AlbumID: album, ArtistID: id,
+		})
 	}
 
 	got, err := NewLibrary(repo).ListArtistAlbums(context.Background(), id, 2, 1)

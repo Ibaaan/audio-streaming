@@ -149,7 +149,9 @@ func (f *fakeRepo) GetArtistByTrackId(
 	ctx context.Context, id uuid.UUID,
 ) ([]catalog.TrackArtistCredit, error) {
 	credits := append([]catalog.TrackArtist{}, f.trackArtists...)
-	sort.Slice(credits, func(i, j int) bool { return credits[i].Position < credits[j].Position })
+	sort.Slice(credits, func(i, j int) bool {
+		return credits[i].Position < credits[j].Position
+	})
 	result := []catalog.TrackArtistCredit{}
 	for _, credit := range credits {
 		if credit.TrackID != id {
@@ -275,7 +277,9 @@ func (f *fakeRepo) ListArtistAlbums(
 		}
 		item := catalog.AlbumOverview{Album: album, Artists: []catalog.Artist{}}
 		credits := append([]catalog.AlbumArtist{}, f.albumArtists...)
-		sort.Slice(credits, func(i, j int) bool { return credits[i].Position < credits[j].Position })
+		sort.Slice(credits, func(i, j int) bool {
+			return credits[i].Position < credits[j].Position
+		})
 		for _, link := range credits {
 			if link.AlbumID != album.ID {
 				continue
@@ -312,14 +316,20 @@ func (f *fakeRepo) ListArtistAlbums(
 	return result[start:end], total, nil
 }
 
-func (f *fakeRepo) GetAlbumDetails(ctx context.Context, id uuid.UUID) (catalog.AlbumDetails, error) {
+func (f *fakeRepo) GetAlbumDetails(
+	ctx context.Context, id uuid.UUID,
+) (catalog.AlbumDetails, error) {
 	album, err := f.GetAlbum(ctx, id)
 	if err != nil {
 		return catalog.AlbumDetails{}, err
 	}
-	result := catalog.AlbumDetails{Album: album, Artists: []catalog.Artist{}, Tracks: []catalog.AlbumTrackEntry{}}
+	result := catalog.AlbumDetails{
+		Album: album, Artists: []catalog.Artist{}, Tracks: []catalog.AlbumTrackEntry{},
+	}
 	credits := append([]catalog.AlbumArtist{}, f.albumArtists...)
-	sort.Slice(credits, func(i, j int) bool { return credits[i].Position < credits[j].Position })
+	sort.Slice(credits, func(i, j int) bool {
+		return credits[i].Position < credits[j].Position
+	})
 	for _, credit := range credits {
 		if credit.AlbumID != id {
 			continue
@@ -356,7 +366,9 @@ func (f *fakeRepo) GetAlbumDetails(ctx context.Context, id uuid.UUID) (catalog.A
 	return result, nil
 }
 
-func fakeSearch[T any](items []T, query string, limit, offset int, label func(T) string) ([]T, int) {
+func fakeSearch[T any](
+	items []T, query string, limit, offset int, label func(T) string,
+) ([]T, int) {
 	result := []T{}
 	for _, item := range items {
 		if strings.Contains(strings.ToLower(label(item)), strings.ToLower(query)) {
@@ -374,13 +386,17 @@ func fakeSearch[T any](items []T, query string, limit, offset int, label func(T)
 func (f *fakeRepo) SearchArtists(
 	ctx context.Context, query string, limit, offset int,
 ) ([]catalog.Artist, int, error) {
-	rows, total := fakeSearch(f.artists, query, limit, offset, func(a catalog.Artist) string { return a.Name })
+	rows, total := fakeSearch(f.artists, query, limit, offset,
+		func(item catalog.Artist) string { return item.Name },
+	)
 	return rows, total, nil
 }
 func (f *fakeRepo) SearchAlbums(
 	ctx context.Context, query string, limit, offset int,
 ) ([]catalog.AlbumOverview, int, error) {
-	rows, total := fakeSearch(f.albums, query, limit, offset, func(a catalog.Album) string { return a.Title })
+	rows, total := fakeSearch(f.albums, query, limit, offset,
+		func(item catalog.Album) string { return item.Title },
+	)
 	result := []catalog.AlbumOverview{}
 	for _, album := range rows {
 		details, err := f.GetAlbumDetails(ctx, album.ID)
@@ -396,7 +412,9 @@ func (f *fakeRepo) SearchAlbums(
 func (f *fakeRepo) SearchTracks(
 	ctx context.Context, query string, limit, offset int,
 ) ([]catalog.TrackOverview, int, error) {
-	rows, total := fakeSearch(f.tracks, query, limit, offset, func(t catalog.Track) string { return t.Title })
+	rows, total := fakeSearch(f.tracks, query, limit, offset,
+		func(item catalog.Track) string { return item.Title },
+	)
 	result := []catalog.TrackOverview{}
 	for _, track := range rows {
 		overview, err := f.trackOverview(ctx, track)

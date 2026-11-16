@@ -18,7 +18,8 @@ func (l *Library) Search(ctx context.Context, req dto.SearchRequest) (dto.Search
 	if !utf8.ValidString(query) || utf8.RuneCountInString(query) < 1 ||
 		utf8.RuneCountInString(query) > 200 || req.PageSize < 0 || req.Offset < 0 {
 		return dto.SearchResponse{}, fmt.Errorf(
-			"%w: query must have 1–200 characters; pagination must be non-negative", ErrInvalidSearch,
+			"%w: query must have 1–200 characters; pagination must be non-negative",
+			ErrInvalidSearch,
 		)
 	}
 	types := req.Types

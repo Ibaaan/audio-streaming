@@ -49,7 +49,9 @@ func TestListArtistTracksPagination(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		id := uuid.New()
 		repo.tracks = append(repo.tracks, catalog.Track{ID: id})
-		repo.trackArtists = append(repo.trackArtists, catalog.TrackArtist{TrackID: id, ArtistID: artist})
+		repo.trackArtists = append(repo.trackArtists, catalog.TrackArtist{
+			TrackID: id, ArtistID: artist,
+		})
 	}
 	lib := NewLibrary(repo)
 

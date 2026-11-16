@@ -21,7 +21,9 @@ func TestGetTrackAssemblesCreditsAndAllAlbums(t *testing.T) {
 	featured := "featured"
 	created := time.Date(2026, 11, 16, 12, 0, 0, 0, time.FixedZone("local", 5*60*60))
 	repo := &fakeRepo{
-		tracks:  []catalog.Track{{ID: id, Title: "Song", DurationMs: 252000, CreatedAt: created, UpdatedAt: created}},
+		tracks: []catalog.Track{
+			{ID: id, Title: "Song", DurationMs: 252000, CreatedAt: created, UpdatedAt: created},
+		},
 		artists: []catalog.Artist{{ID: main, Name: "Main"}, {ID: guest, Name: "Guest"}},
 		trackArtists: []catalog.TrackArtist{
 			{TrackID: id, ArtistID: guest, Position: 1, Role: &featured},

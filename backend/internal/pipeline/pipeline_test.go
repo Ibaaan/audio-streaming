@@ -176,7 +176,7 @@ func TestRunReturnsSaveError(t *testing.T) {
 
 	id, err := env.p.Run(context.Background(), path)
 
-	assert.ErrorIs(t, err, saveErr)
+	require.ErrorIs(t, err, saveErr)
 	assert.Equal(t, uuid.Nil, id)
 }
 

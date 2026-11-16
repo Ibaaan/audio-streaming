@@ -31,7 +31,8 @@ func TestListArtistTracksOrdersAndPaginates(t *testing.T) {
 			ReleaseYear: &year}
 		require.NoError(t, repo.AddAlbum(ctx, &album))
 		require.NoError(t, repo.AddAlbumTrack(ctx, catalog.AlbumTrack{
-			AlbumID: album.ID, TrackID: track.ID, DiscNo: 1, TrackNo: 1, Quality: catalog.QualityOptimal,
+			AlbumID: album.ID, TrackID: track.ID, DiscNo: 1, TrackNo: 1,
+			Quality: catalog.QualityOptimal,
 		}))
 	}
 

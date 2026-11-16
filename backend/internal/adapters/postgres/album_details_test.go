@@ -31,7 +31,8 @@ func TestGetAlbumDetailsReadsNestedCredits(t *testing.T) {
 			TrackID: track.ID, ArtistID: artist.ID, Role: &featured,
 		}))
 		require.NoError(t, repo.AddAlbumTrack(ctx, catalog.AlbumTrack{
-			AlbumID: album.ID, TrackID: track.ID, DiscNo: disc, TrackNo: 1, Quality: catalog.QualityOptimal,
+			AlbumID: album.ID, TrackID: track.ID, DiscNo: disc, TrackNo: 1,
+			Quality: catalog.QualityOptimal,
 		}))
 	}
 

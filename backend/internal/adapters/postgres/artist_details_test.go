@@ -31,7 +31,8 @@ func TestArtistDetailReads(t *testing.T) {
 			TrackID: track.ID, ArtistID: artist.ID,
 		}))
 		require.NoError(t, repo.AddAlbumTrack(ctx, catalog.AlbumTrack{
-			AlbumID: album.ID, TrackID: track.ID, DiscNo: 1, TrackNo: 1, Quality: catalog.QualityOptimal,
+			AlbumID: album.ID, TrackID: track.ID, DiscNo: 1, TrackNo: 1,
+			Quality: catalog.QualityOptimal,
 		}))
 	}
 
