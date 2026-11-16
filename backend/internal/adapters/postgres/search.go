@@ -35,18 +35,19 @@ func (r *Repository) SearchArtists(
 
 func (r *Repository) SearchAlbums(
 	ctx context.Context, query string, limit, offset int,
-) ([]catalog.Album, int, error) {
-	return searchRows[catalog.Album](ctx, r.dbtx,
+) ([]catalog.AlbumOverview, int, error) {
+	return searchRows[catalog.AlbumOverview](ctx, r.dbtx,
 		`SELECT count(*) FROM albums WHERE strpos(lower(title), lower($1)) > 0`,
-		`SELECT * FROM albums WHERE strpos(lower(title), lower($1)) > 0
- ORDER BY lower(title), id LIMIT $2 OFFSET $3`, query, limit, offset)
+		`SELECT `+albumOverviewColumns+` FROM albums a WHERE strpos(lower(a.title), lower($1)) > 0
+ ORDER BY lower(a.title), a.id LIMIT $2 OFFSET $3`, query, limit, offset)
 }
 
 func (r *Repository) SearchTracks(
 	ctx context.Context, query string, limit, offset int,
-) ([]catalog.Track, int, error) {
-	return searchRows[catalog.Track](ctx, r.dbtx,
+) ([]catalog.TrackOverview, int, error) {
+	return searchRows[catalog.TrackOverview](ctx, r.dbtx,
 		`SELECT count(*) FROM tracks WHERE strpos(lower(title), lower($1)) > 0`,
-		`SELECT * FROM tracks WHERE strpos(lower(title), lower($1)) > 0
- ORDER BY lower(title), id LIMIT $2 OFFSET $3`, query, limit, offset)
+		`SELECT `+trackOverviewColumns+trackOverviewFrom+`
+ WHERE strpos(lower(t.title), lower($1)) > 0
+ ORDER BY lower(t.title), t.id LIMIT $2 OFFSET $3`, query, limit, offset)
 }

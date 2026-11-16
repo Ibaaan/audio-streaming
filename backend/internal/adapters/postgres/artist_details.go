@@ -29,11 +29,7 @@ func (r *Repository) ListArtistAlbums(
 		return nil, 0, err
 	}
 	rows, err := r.dbtx.Query(ctx, `
-SELECT a.*,
- (SELECT count(*) FROM album_tracks at WHERE at.album_id = a.id) AS track_count,
- (SELECT coalesce(jsonb_agg(ar ORDER BY aa.position), '[]'::jsonb)
-  FROM album_artists aa JOIN artists ar ON ar.id = aa.artist_id
-  WHERE aa.album_id = a.id) AS artists
+SELECT `+albumOverviewColumns+`
 FROM albums a JOIN album_artists credit ON credit.album_id = a.id
 WHERE credit.artist_id = $1
 ORDER BY a.release_year DESC NULLS LAST, a.id

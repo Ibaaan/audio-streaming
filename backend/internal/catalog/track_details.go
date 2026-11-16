@@ -15,6 +15,13 @@ type TrackAlbumAppearance struct {
 
 // ArtistTrack is a track credited to the queried artist, including their role.
 type ArtistTrack struct {
-	Track
+	TrackOverview
 	Role *string `db:"role"`
+}
+
+// TrackOverview contains exactly the related data needed for list responses.
+type TrackOverview struct {
+	Track
+	Artists []TrackArtistCredit   `db:"artists"`
+	Album   *TrackAlbumAppearance `db:"album"`
 }

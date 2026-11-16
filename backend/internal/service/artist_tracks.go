@@ -33,22 +33,13 @@ func (l *Library) ListArtistTracks(
 		Tracks: make([]dto.ArtistTrackItem, 0, len(tracks)), TotalSize: total,
 	}
 	for _, row := range tracks {
-		track, err := l.GetTrack(ctx, row.ID)
-		if err != nil {
-			return dto.ListArtistTracksResponse{}, err
+		item := dto.ArtistTrackItem{
+			TrackSummary: trackSummary(row.TrackOverview), ArtistRole: dto.ArtistRoleMain,
 		}
-		item := dto.ArtistTrackItem{TrackSummary: dto.TrackSummary{
-			TrackRef: track.TrackRef, Artists: track.Artists,
-		}, ArtistRole: dto.ArtistRoleMain}
 		if row.Role != nil {
 			item.ArtistRole = dto.ArtistRole(*row.Role)
 		}
-		if len(track.Albums) > 0 {
-			album := track.Albums[0]
-			item.Album = &album.AlbumRef
-			item.DiscNumber = &album.DiscNumber
-			item.TrackNumber = &album.TrackNumber
-		}
+
 		result.Tracks = append(result.Tracks, item)
 	}
 	if len(tracks) > 0 && offset < total && len(tracks) < total-offset {

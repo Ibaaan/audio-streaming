@@ -71,15 +71,9 @@ func (l *Library) Search(ctx context.Context, req dto.SearchRequest) (dto.Search
 				NextOffset: searchNextOffset(req.Offset, len(albums), total),
 			}
 			for _, album := range albums {
-				details, err := l.GetAlbum(ctx, album.ID, nil)
-				if err != nil {
-					return dto.SearchResponse{}, err
-				}
-				page.Albums = append(page.Albums, dto.AlbumSummary{
-					AlbumRef: details.AlbumRef, Artists: details.Artists,
-					TrackCount: details.TrackCount,
-				})
+				page.Albums = append(page.Albums, albumSummary(album))
 			}
+
 			result.Albums = &page
 		case dto.SearchTypeTrack:
 			tracks, total, err := l.repo.SearchTracks(ctx, query, size, req.Offset)
@@ -91,19 +85,9 @@ func (l *Library) Search(ctx context.Context, req dto.SearchRequest) (dto.Search
 				NextOffset: searchNextOffset(req.Offset, len(tracks), total),
 			}
 			for _, track := range tracks {
-				details, err := l.GetTrack(ctx, track.ID)
-				if err != nil {
-					return dto.SearchResponse{}, err
-				}
-				item := dto.TrackSummary{TrackRef: details.TrackRef, Artists: details.Artists}
-				if len(details.Albums) > 0 {
-					album := details.Albums[0]
-					item.Album = &album.AlbumRef
-					item.DiscNumber = &album.DiscNumber
-					item.TrackNumber = &album.TrackNumber
-				}
-				page.Tracks = append(page.Tracks, item)
+				page.Tracks = append(page.Tracks, trackSummary(track))
 			}
+
 			result.Tracks = &page
 		}
 	}

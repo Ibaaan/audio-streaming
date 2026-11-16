@@ -33,23 +33,7 @@ func (l *Library) ListArtistAlbums(
 		Albums: make([]dto.AlbumSummary, 0, len(albums)), TotalSize: total,
 	}
 	for _, album := range albums {
-		item := dto.AlbumSummary{
-			AlbumRef: dto.AlbumRef{
-				ID: album.ID, Title: album.Title, AlbumType: dto.AlbumType(album.AlbumType),
-			},
-			Artists:    make([]dto.ArtistRef, 0, len(album.Artists)),
-			TrackCount: album.TrackCount,
-		}
-		if album.ReleaseYear != nil {
-			year := int(*album.ReleaseYear)
-			item.ReleaseYear = &year
-		}
-		for _, credit := range album.Artists {
-			item.Artists = append(item.Artists, dto.ArtistRef{
-				ID: credit.ID, DisplayName: credit.Name,
-			})
-		}
-		page.Albums = append(page.Albums, item)
+		page.Albums = append(page.Albums, albumSummary(album))
 	}
 	if len(albums) > 0 && offset < total && len(albums) < total-offset {
 		next := offset + len(albums)

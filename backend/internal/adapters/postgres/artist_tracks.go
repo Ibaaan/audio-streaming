@@ -21,14 +21,8 @@ func (r *Repository) ListArtistTracks(
 		return nil, 0, err
 	}
 	rows, err := r.dbtx.Query(ctx, `
-SELECT t.*, ta.role FROM tracks t
+SELECT `+trackOverviewColumns+`, ta.role`+trackOverviewFrom+`
 JOIN track_artists ta ON ta.track_id = t.id
-LEFT JOIN LATERAL (
- SELECT a.release_year, at.disc_no, at.track_no
- FROM album_tracks at JOIN albums a ON a.id = at.album_id
- WHERE at.track_id = t.id
- ORDER BY a.created_at, a.id LIMIT 1
-) al ON true
 WHERE ta.artist_id = $1
 ORDER BY al.release_year DESC NULLS LAST,
          al.disc_no ASC NULLS LAST, al.track_no ASC NULLS LAST, t.id

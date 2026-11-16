@@ -54,8 +54,8 @@ type ImageRepository interface {
 // Results are ordered by name/title, then ID, for stable offset pagination.
 type SearchRepository interface {
 	SearchArtists(ctx context.Context, query string, limit, offset int) ([]Artist, int, error)
-	SearchAlbums(ctx context.Context, query string, limit, offset int) ([]Album, int, error)
-	SearchTracks(ctx context.Context, query string, limit, offset int) ([]Track, int, error)
+	SearchAlbums(ctx context.Context, query string, limit, offset int) ([]AlbumOverview, int, error)
+	SearchTracks(ctx context.Context, query string, limit, offset int) ([]TrackOverview, int, error)
 }
 
 // Repository is every repository together, for code that touches the whole

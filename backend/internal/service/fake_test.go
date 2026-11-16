@@ -198,7 +198,11 @@ func (f *fakeRepo) ListArtistTracks(
 		if err != nil {
 			return nil, 0, err
 		}
-		result = append(result, catalog.ArtistTrack{Track: track, Role: credit.Role})
+		overview, err := f.trackOverview(ctx, track)
+		if err != nil {
+			return nil, 0, err
+		}
+		result = append(result, catalog.ArtistTrack{TrackOverview: overview, Role: credit.Role})
 	}
 	sort.Slice(result, func(i, j int) bool {
 		a, _ := f.GetAlbumByTrackId(ctx, result[i].ID)
@@ -372,13 +376,49 @@ func (f *fakeRepo) SearchArtists(
 }
 func (f *fakeRepo) SearchAlbums(
 	ctx context.Context, query string, limit, offset int,
-) ([]catalog.Album, int, error) {
+) ([]catalog.AlbumOverview, int, error) {
 	rows, total := fakeSearch(f.albums, query, limit, offset, func(a catalog.Album) string { return a.Title })
-	return rows, total, nil
+	result := []catalog.AlbumOverview{}
+	for _, album := range rows {
+		details, err := f.GetAlbumDetails(ctx, album.ID)
+		if err != nil {
+			return nil, 0, err
+		}
+		result = append(result, catalog.AlbumOverview{
+			Album: album, Artists: details.Artists, TrackCount: len(details.Tracks),
+		})
+	}
+	return result, total, nil
 }
 func (f *fakeRepo) SearchTracks(
 	ctx context.Context, query string, limit, offset int,
-) ([]catalog.Track, int, error) {
+) ([]catalog.TrackOverview, int, error) {
 	rows, total := fakeSearch(f.tracks, query, limit, offset, func(t catalog.Track) string { return t.Title })
-	return rows, total, nil
+	result := []catalog.TrackOverview{}
+	for _, track := range rows {
+		overview, err := f.trackOverview(ctx, track)
+		if err != nil {
+			return nil, 0, err
+		}
+		result = append(result, overview)
+	}
+	return result, total, nil
+}
+
+func (f *fakeRepo) trackOverview(
+	ctx context.Context, track catalog.Track,
+) (catalog.TrackOverview, error) {
+	artists, err := f.GetArtistByTrackId(ctx, track.ID)
+	if err != nil {
+		return catalog.TrackOverview{}, err
+	}
+	albums, err := f.GetAlbumByTrackId(ctx, track.ID)
+	if err != nil {
+		return catalog.TrackOverview{}, err
+	}
+	result := catalog.TrackOverview{Track: track, Artists: artists}
+	if len(albums) > 0 {
+		result.Album = &albums[0]
+	}
+	return result, nil
 }
