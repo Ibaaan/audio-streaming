@@ -92,3 +92,29 @@ func TestSourceInfoNoAudio(t *testing.T) {
 
 	assert.Error(t, err)
 }
+
+func TestSourceInfoReadsAudioBitrate(t *testing.T) {
+	for _, tc := range []struct {
+		name, metadata string
+		bitrate        int64
+	}{
+		{"stream bitrate", `{"streams":[{"codec_type":"audio","codec_name":"aac",
+   "sample_rate":"44100","bit_rate":"256000"}],"format":{"bit_rate":"300000"}}`, 256000},
+		{"container fallback", `{"streams":[{"codec_type":"audio","codec_name":"opus",
+   "sample_rate":"48000"}],"format":{"bit_rate":"192000"}}`, 192000},
+		{"not total video bitrate", `{"streams":[{"codec_type":"audio","codec_name":"aac",
+   "sample_rate":"44100"},{"codec_type":"video"}],"format":{"bit_rate":"8000000"}}`, 0},
+		{"unavailable", `{"streams":[{"codec_type":"audio","codec_name":"mp3",
+   "sample_rate":"44100","bit_rate":"N/A"}]}`, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			p, err := parseProbe([]byte(tc.metadata))
+			require.NoError(t, err)
+
+			got, err := sourceInfo(p)
+
+			require.NoError(t, err)
+			assert.Equal(t, tc.bitrate, got.BitRate)
+		})
+	}
+}

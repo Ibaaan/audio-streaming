@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"mime"
 	"net/http"
@@ -10,12 +11,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"audio-streaming/internal/catalog"
+	"audio-streaming/internal/dto"
 )
 
 const streamExpiry = time.Hour
 
 type trackChecker interface {
-	HasTrack(ctx context.Context, id uuid.UUID) (bool, error)
+	GetTrackQuality(ctx context.Context, id uuid.UUID) (dto.Quality, error)
 }
 
 type blobFinder interface {
@@ -24,9 +28,10 @@ type blobFinder interface {
 }
 
 type streamURL struct {
-	URL         string    `json:"url"`
-	ContentType string    `json:"content_type"`
-	ExpireTime  time.Time `json:"expire_time"`
+	Quality     dto.Quality `json:"quality"`
+	URL         string      `json:"url"`
+	ContentType string      `json:"content_type"`
+	ExpireTime  time.Time   `json:"expire_time"`
 }
 
 // StreamTrack returns a presigned URL for the track's audio. The browser
@@ -38,13 +43,18 @@ func StreamTrack(lib trackChecker, blobs blobFinder) http.HandlerFunc {
 			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", "track must be a UUID")
 			return
 		}
-		present, err := lib.HasTrack(r.Context(), id)
-		if err != nil {
-			internalError(w, "checking track", err)
+		if _, present := r.URL.Query()["quality"]; present {
+			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER",
+				"quality is stored on the track and cannot be selected")
 			return
 		}
-		if !present {
+		quality, err := lib.GetTrackQuality(r.Context(), id)
+		if errors.Is(err, catalog.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "RESOURCE_NOT_FOUND", "no such track")
+			return
+		}
+		if err != nil {
+			internalError(w, "getting track quality", err)
 			return
 		}
 
@@ -61,6 +71,7 @@ func StreamTrack(lib trackChecker, blobs blobFinder) http.HandlerFunc {
 		w.Header().Set("Cache-Control", "no-store")
 		writeJSON(w, http.StatusOK, streamURL{
 			URL:         url,
+			Quality:     quality,
 			ContentType: mime.TypeByExtension(path.Ext(key)),
 			ExpireTime:  time.Now().Add(streamExpiry).UTC(),
 		})

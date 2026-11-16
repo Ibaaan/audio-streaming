@@ -148,6 +148,7 @@ func TestRunUploadsAudioAndSavesRecord(t *testing.T) {
 	assert.Equal(t, audioData, env.blobs.blobs[key].data)
 	assert.Equal(t, "audio/flac", env.blobs.blobs[key].contentType)
 	assert.Equal(t, "Duality", rec.Tags.Title)
+	assert.Equal(t, audio.QualityLossless, rec.Quality)
 	assert.Equal(t, int64(44100*252), rec.SourceInfo.Samples)
 }
 

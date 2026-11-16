@@ -63,9 +63,10 @@ func (l *Library) GetTrack(ctx context.Context, id uuid.UUID) (dto.Track, error)
 		ID:         track.ID,
 		Title:      track.Title,
 		DurationMs: int(track.DurationMs),
+		Quality:    dto.Quality(track.Quality),
 		Artists:    make([]dto.TrackArtist, 0, len(artists)),
 		Albums:     make([]dto.TrackAlbum, 0, len(albums)),
-		Audio:      dto.TrackAudio{Qualities: []dto.Quality{}},
+		Audio:      dto.TrackAudio{},
 		CreateTime: track.CreatedAt.UTC(),
 		UpdateTime: track.UpdatedAt.UTC(),
 	}
@@ -169,6 +170,7 @@ func addNewTrack(
 		ID:         e.trackID,
 		Title:      e.title,
 		DurationMs: e.durationMs,
+		Quality:    e.quality,
 	}
 	if err := tx.AddTrack(ctx, &track); err != nil {
 		return catalog.Track{}, fmt.Errorf("adding track: %w", err)
@@ -304,4 +306,13 @@ func findOrAddArtist(
 		return catalog.Artist{}, fmt.Errorf("adding artist: %w", err)
 	}
 	return artist, nil
+}
+
+// GetTrackQuality returns the classification of the single stored audio file.
+func (l *Library) GetTrackQuality(ctx context.Context, id uuid.UUID) (dto.Quality, error) {
+	track, err := l.repo.GetTrack(ctx, id)
+	if err != nil {
+		return "", err
+	}
+	return dto.Quality(track.Quality), nil
 }

@@ -8,8 +8,9 @@ import (
 // Summary conversion performs no database calls.
 func trackSummary(track catalog.TrackOverview) dto.TrackSummary {
 	item := dto.TrackSummary{
-		TrackRef: dto.TrackRef{ID: track.ID, Title: track.Title, DurationMs: int(track.DurationMs)},
-		Artists:  make([]dto.TrackArtist, 0, len(track.Artists)),
+		TrackRef: dto.TrackRef{ID: track.ID, Title: track.Title, DurationMs: int(track.DurationMs),
+			Quality: dto.Quality(track.Quality)},
+		Artists: make([]dto.TrackArtist, 0, len(track.Artists)),
 	}
 	for _, artist := range track.Artists {
 		role := dto.ArtistRoleMain

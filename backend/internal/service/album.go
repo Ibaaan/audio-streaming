@@ -48,6 +48,7 @@ func (l *Library) GetAlbum(
 		item := dto.AlbumTrack{
 			TrackRef: dto.TrackRef{
 				ID: track.ID, Title: track.Title, DurationMs: int(track.DurationMs),
+				Quality: dto.Quality(track.Quality),
 			},
 			Artists:    make([]dto.TrackArtist, 0, len(track.Artists)),
 			DiscNumber: int(track.DiscNo), TrackNumber: int(track.TrackNo),

@@ -18,6 +18,7 @@ type probeOutput struct {
 	Streams []probeStream `json:"streams"`
 	Format  struct {
 		Duration string            `json:"duration"`
+		BitRate  string            `json:"bit_rate"`
 		Tags     map[string]string `json:"tags"`
 	} `json:"format"`
 }
@@ -26,6 +27,7 @@ type probeStream struct {
 	Index            int    `json:"index"`
 	CodecType        string `json:"codec_type"`
 	CodecName        string `json:"codec_name"`
+	BitRate          string `json:"bit_rate"`
 	SampleFmt        string `json:"sample_fmt"`
 	SampleRate       string `json:"sample_rate"`
 	Channels         int    `json:"channels"`
@@ -109,6 +111,15 @@ func sourceInfo(p probeOutput) (audio.SourceInfo, error) {
 		Channels:   s.Channels,
 		Layout:     layout(s.ChannelLayout),
 		Samples:    totalSamples(s, p.Format.Duration, rate),
+	}
+	info.BitRate, _ = strconv.ParseInt(s.BitRate, 10, 64)
+	// Container bitrate is only a fallback for a single-stream audio file:
+	// video, alternate streams, or attached artwork would inflate the estimate.
+	if info.BitRate <= 0 && len(p.Streams) == 1 {
+		info.BitRate, _ = strconv.ParseInt(p.Format.BitRate, 10, 64)
+	}
+	if info.BitRate < 0 {
+		info.BitRate = 0
 	}
 	if info.Lossless {
 		info.BitDepth = bitDepth(s)

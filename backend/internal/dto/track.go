@@ -11,10 +11,11 @@ type TrackRef struct {
 	ID         uuid.UUID `json:"id"`
 	Title      string    `json:"title"`
 	DurationMs int       `json:"duration_ms"`
+	Quality    Quality   `json:"quality"`
 }
 
 // Track is the response body for GET /v1/tracks/{track}.
-// Initialize Artists, Albums, and Audio.Qualities to empty slices when absent
+// Initialize Artists and Albums to empty slices when absent
 // so required collections encode as [] rather than null.
 type Track struct {
 	TrackRef
@@ -32,16 +33,16 @@ type TrackAlbum struct {
 	TrackNumber int `json:"track_number"`
 }
 
-// TrackAudio describes available formats and playback normalization metadata.
+// TrackAudio describes playback normalization metadata.
 type TrackAudio struct {
-	Qualities    []Quality `json:"qualities"`
-	LoudnessLUFS float64   `json:"loudness_lufs"`
-	TruePeakDB   float64   `json:"true_peak_db"`
+	LoudnessLUFS float64 `json:"loudness_lufs"`
+	TruePeakDB   float64 `json:"true_peak_db"`
 }
 
 type Quality string
 
 const (
 	QualityLossless Quality = "lossless"
-	QualityMP3      Quality = "mp3"
+	QualityOptimal  Quality = "optimal"
+	QualityLow      Quality = "low"
 )

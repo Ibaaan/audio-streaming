@@ -11,14 +11,17 @@ import (
 )
 
 const insertTrackQuery = `
-INSERT INTO tracks (id, title, duration_ms)
-VALUES ($1, $2, $3)
+INSERT INTO tracks (id, title, duration_ms, quality)
+VALUES ($1, $2, $3, $4)
 RETURNING created_at, updated_at`
 
 // AddTrack inserts t and fills in the timestamps the database sets.
 func (r *Repository) AddTrack(ctx context.Context, t *catalog.Track) error {
+	if t.Quality == "" {
+		t.Quality = catalog.QualityLow
+	}
 	return r.dbtx.QueryRow(ctx, insertTrackQuery,
-		t.ID, t.Title, t.DurationMs,
+		t.ID, t.Title, t.DurationMs, t.Quality,
 	).Scan(&t.CreatedAt, &t.UpdatedAt)
 }
 
@@ -59,7 +62,7 @@ func (r *Repository) FindTrack(
 // track on several albums is listed with the oldest of them.
 const listTracksQuery = `
 SELECT t.id AS track_id, t.title AS track_title,
-       t.duration_ms AS track_duration_ms,
+       t.duration_ms AS track_duration_ms, t.quality AS track_quality,
        t.created_at AS track_created_at, t.updated_at AS track_updated_at,
        ar.id AS artist_id, ar.name AS artist_name,
        ar.sort_name AS artist_sort_name, ar.image_id AS artist_image_id,
@@ -87,11 +90,12 @@ LEFT JOIN LATERAL (
 ORDER BY t.created_at DESC, t.id DESC`
 
 type trackSummaryRow struct {
-	TrackID         uuid.UUID `db:"track_id"`
-	TrackTitle      string    `db:"track_title"`
-	TrackDurationMs int32     `db:"track_duration_ms"`
-	TrackCreatedAt  time.Time `db:"track_created_at"`
-	TrackUpdatedAt  time.Time `db:"track_updated_at"`
+	TrackQuality    catalog.Quality `db:"track_quality"`
+	TrackID         uuid.UUID       `db:"track_id"`
+	TrackTitle      string          `db:"track_title"`
+	TrackDurationMs int32           `db:"track_duration_ms"`
+	TrackCreatedAt  time.Time       `db:"track_created_at"`
+	TrackUpdatedAt  time.Time       `db:"track_updated_at"`
 
 	ArtistID        *uuid.UUID `db:"artist_id"`
 	ArtistName      *string    `db:"artist_name"`
@@ -125,6 +129,7 @@ func (r *Repository) ListTracks(ctx context.Context) ([]catalog.TrackSummary, er
 	for _, row := range dbRows {
 		summary := catalog.TrackSummary{Track: catalog.Track{
 			ID:         row.TrackID,
+			Quality:    row.TrackQuality,
 			Title:      row.TrackTitle,
 			DurationMs: row.TrackDurationMs,
 			CreatedAt:  row.TrackCreatedAt,

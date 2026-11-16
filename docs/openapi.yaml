@@ -259,11 +259,12 @@ paths:
       summary: Ссылка на аудиопоток
       description: |
         Возвращает в JSON временную presigned-ссылку на объект в S3:
-        `media-public/audio/{shard}/{id}/v{pipeline_version}/{lossless.flac|320.mp3}`.
+        `audio/{id}{extension}`.
+        Для трека хранится один исходный файл. Выбор качества не поддерживается;
+        поле `quality` в ответе сообщает сохранённую категорию качества.
 
         Фронтенд подставляет `url` в `<audio src>` и дальше работает
-        напрямую с S3. S3 отдаёт `Content-Type` (`audio/flac` или
-        `audio/mpeg`) и поддерживает `Range`-запросы (`206 Partial Content`),
+        напрямую с S3. S3 отдаёт `Content-Type` исходного формата и поддерживает `Range`-запросы (`206 Partial Content`),
         поэтому перемотка работает без участия бэкенда. Когда ссылка
         истекает (`expire_time`), клиент запрашивает новую и продолжает
         с текущей позиции.
@@ -273,15 +274,6 @@ paths:
       operationId: streamTrack
       parameters:
         - $ref: '#/components/parameters/TrackId'
-        - name: quality
-          in: query
-          required: false
-          description: |
-            `lossless` — FLAC 44,1 кГц / 16 бит, стерео.
-            `mp3` — MP3 320 kbps.
-          schema:
-            $ref: '#/components/schemas/Quality'
-            default: mp3
       responses:
         '200':
           description: Ссылка на аудиофайл
@@ -497,7 +489,18 @@ components:
 
     Quality:
       type: string
-      enum: [lossless, mp3]
+      description: |
+        Категория качества исходного файла; это не список доступных вариантов.
+        `lossless` — название верхней категории, а не гарантия кодирования без потерь.
+        Настоящие lossless-кодеки (FLAC, ALAC, PCM/WAV, WavPack, APE и др.)
+        всегда относятся к верхней категории.
+        Пороги среднего битрейта (кбит/с):
+        - AAC, Vorbis, WMA: lossless >= 256, optimal >= 192, иначе low.
+        - MP3 и остальные lossy-кодеки: lossless >= 320, optimal >= 192, иначе low.
+        - Opus: lossless >= 192, optimal >= 128, иначе low.
+        64 кбит/с относится к low. Неизвестный битрейт lossy-файла — low.
+        Категория определяется при импорте; перекодирование не выполняется.
+      enum: [low, optimal, lossless]
 
     SearchType:
       type: string
@@ -578,7 +581,7 @@ components:
     TrackSummary:
       type: object
       description: Трек в списках
-      required: [id, title, duration_ms, artists, album, disc_number, track_number]
+      required: [id, title, duration_ms, quality, artists, album, disc_number, track_number]
       properties:
         id:
           type: string
@@ -590,6 +593,8 @@ components:
           type: integer
           minimum: 0
           example: 213500
+        quality:
+          $ref: '#/components/schemas/Quality'
         artists:
           type: array
           items:
@@ -617,7 +622,7 @@ components:
     AlbumTrack:
       type: object
       description: Трек внутри альбома (без вложенного альбома)
-      required: [id, title, duration_ms, artists, disc_number, track_number]
+      required: [id, title, duration_ms, quality, artists, disc_number, track_number]
       properties:
         id:
           type: string
@@ -629,6 +634,8 @@ components:
           type: integer
           minimum: 0
           example: 213500
+        quality:
+          $ref: '#/components/schemas/Quality'
         artists:
           type: array
           items:
@@ -815,14 +822,14 @@ components:
         url:
           type: string
           format: uri
-          description: Presigned URL аудиофайла в S3
-          example: https://s3.example.com/media-public/audio/e7/7f6e...e7/v1/320.mp3?X-Amz-Expires=3600&X-Amz-Signature=...
+          description: Presigned URL исходного аудиофайла в S3
+          example: https://s3.example.com/media-public/audio/7f6e0000-0000-0000-0000-000000000001.mp3?X-Amz-Expires=3600
         quality:
           $ref: '#/components/schemas/Quality'
         content_type:
           type: string
           description: MIME-тип файла
-          enum: [audio/flac, audio/mpeg]
+          example: audio/mpeg
         expire_time:
           type: string
           format: date-time
@@ -830,13 +837,8 @@ components:
 
     TrackAudio:
       type: object
-      required: [qualities, loudness_lufs, true_peak_db]
+      required: [loudness_lufs, true_peak_db]
       properties:
-        qualities:
-          type: array
-          description: Доступные значения `quality` для `/stream`
-          items:
-            $ref: '#/components/schemas/Quality'
         loudness_lufs:
           type: number
           description: |
@@ -851,7 +853,7 @@ components:
 
     Track:
       type: object
-      required: [id, title, duration_ms, artists, albums, audio, create_time, update_time]
+      required: [id, title, duration_ms, quality, artists, albums, audio, create_time, update_time]
       properties:
         id:
           type: string
@@ -863,6 +865,8 @@ components:
           type: integer
           minimum: 0
           example: 213500
+        quality:
+          $ref: '#/components/schemas/Quality'
         artists:
           type: array
           items:

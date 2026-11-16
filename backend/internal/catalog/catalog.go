@@ -75,6 +75,7 @@ type AlbumArtist struct {
 }
 
 type Track struct {
+	Quality    Quality   `db:"quality" json:"quality"`
 	ID         uuid.UUID `db:"id"          json:"id"`
 	Title      string    `db:"title"       json:"title"`
 	DurationMs int32     `db:"duration_ms" json:"duration_ms"`

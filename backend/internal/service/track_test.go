@@ -70,7 +70,7 @@ func TestGetTrackWithoutRelationsEncodesEmptyArrays(t *testing.T) {
 	require.NoError(t, err)
 	assert.Contains(t, string(data), `"artists":[]`)
 	assert.Contains(t, string(data), `"albums":[]`)
-	assert.Contains(t, string(data), `"qualities":[]`)
+	assert.NotContains(t, string(data), `"qualities"`)
 	assert.NotContains(t, string(data), `"name"`)
 }
 

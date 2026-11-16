@@ -44,6 +44,9 @@ func first[T any](items []T, match func(T) bool) (T, error) {
 }
 
 func (f *fakeRepo) AddTrack(ctx context.Context, t *catalog.Track) error {
+	if t.Quality == "" {
+		t.Quality = catalog.QualityLow
+	}
 	f.tracks = append(f.tracks, *t)
 	return nil
 }

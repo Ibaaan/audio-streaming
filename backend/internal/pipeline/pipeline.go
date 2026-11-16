@@ -69,6 +69,7 @@ func (p *Pipeline) Run(ctx context.Context, path string) error {
 	rec := audio.Record{
 		TrackID:    id,
 		SourceInfo: info,
+		Quality:    audio.ClassifyQuality(info),
 		Tags:       tags,
 		Cover:      cover,
 	}
