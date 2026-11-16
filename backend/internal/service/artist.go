@@ -42,37 +42,12 @@ func (l *Library) GetArtist(
 		result.Tracks = &tracks
 	}
 	if seen["albums"] {
-		albums, total, err := l.repo.ListArtistAlbums(ctx, id, 20, 0)
+		page, err := l.ListArtistAlbums(ctx, id, 20, 0)
 		if err != nil {
-			return dto.Artist{}, fmt.Errorf("listing artist albums: %w", err)
-		}
-		page := dto.ListAlbumsResponse{
-			Albums: make([]dto.AlbumSummary, 0, len(albums)), TotalSize: total,
-		}
-		for _, album := range albums {
-			item := dto.AlbumSummary{
-				AlbumRef: dto.AlbumRef{
-					ID: album.ID, Title: album.Title, AlbumType: dto.AlbumType(album.AlbumType),
-				},
-				Artists:    make([]dto.ArtistRef, 0, len(album.Artists)),
-				TrackCount: album.TrackCount,
-			}
-			if album.ReleaseYear != nil {
-				year := int(*album.ReleaseYear)
-				item.ReleaseYear = &year
-			}
-			for _, credit := range album.Artists {
-				item.Artists = append(item.Artists, dto.ArtistRef{
-					ID: credit.ID, DisplayName: credit.Name,
-				})
-			}
-			page.Albums = append(page.Albums, item)
-		}
-		if len(albums) > 0 && len(albums) < total {
-			next := len(albums)
-			page.NextOffset = &next
+			return dto.Artist{}, err
 		}
 		result.Albums = &page
 	}
+
 	return result, nil
 }
