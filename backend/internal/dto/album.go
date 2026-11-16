@@ -20,3 +20,15 @@ const (
 	AlbumTypeEP          AlbumType = "ep"
 	AlbumTypeCompilation AlbumType = "compilation"
 )
+
+type AlbumSummary struct {
+	AlbumRef
+	Artists    []ArtistRef `json:"artists"`
+	TrackCount int         `json:"track_count"`
+}
+
+type ListAlbumsResponse struct {
+	Albums     []AlbumSummary `json:"albums"`
+	NextOffset *int           `json:"next_offset,omitempty"`
+	TotalSize  int            `json:"total_size"`
+}

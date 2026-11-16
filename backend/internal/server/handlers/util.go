@@ -92,3 +92,22 @@ func paginationValue(r *http.Request, name string, fallback int) (int, error) {
 	}
 	return value, nil
 }
+
+func artistInclude(r *http.Request) ([]string, error) {
+	values, present := r.URL.Query()["include"]
+	if !present {
+		return nil, nil
+	}
+	if len(values) != 1 {
+		return nil, errors.New("include must be specified once")
+	}
+	include := strings.Split(values[0], ",")
+	seen := map[string]bool{}
+	for _, value := range include {
+		if (value != "albums" && value != "tracks") || seen[value] {
+			return nil, errors.New("include must contain unique albums or tracks values")
+		}
+		seen[value] = true
+	}
+	return include, nil
+}

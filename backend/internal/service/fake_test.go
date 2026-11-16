@@ -235,3 +235,72 @@ func (f *fakeRepo) ListArtistTracks(
 	end := start + min(limit, total-start)
 	return result[start:end], total, nil
 }
+
+func (f *fakeRepo) GetArtistStats(ctx context.Context, id uuid.UUID) (catalog.ArtistStats, error) {
+	if _, err := f.GetArtist(ctx, id); err != nil {
+		return catalog.ArtistStats{}, err
+	}
+	stats := catalog.ArtistStats{}
+	for _, credit := range f.albumArtists {
+		if credit.ArtistID == id {
+			stats.AlbumCount++
+		}
+	}
+	for _, credit := range f.trackArtists {
+		if credit.ArtistID == id {
+			stats.TrackCount++
+		}
+	}
+	return stats, nil
+}
+
+func (f *fakeRepo) ListArtistAlbums(
+	ctx context.Context, id uuid.UUID, limit, offset int,
+) ([]catalog.AlbumOverview, int, error) {
+	result := []catalog.AlbumOverview{}
+	for _, credit := range f.albumArtists {
+		if credit.ArtistID != id {
+			continue
+		}
+		album, err := f.GetAlbum(ctx, credit.AlbumID)
+		if err != nil {
+			return nil, 0, err
+		}
+		item := catalog.AlbumOverview{Album: album, Artists: []catalog.Artist{}}
+		credits := append([]catalog.AlbumArtist{}, f.albumArtists...)
+		sort.Slice(credits, func(i, j int) bool { return credits[i].Position < credits[j].Position })
+		for _, link := range credits {
+			if link.AlbumID != album.ID {
+				continue
+			}
+			artist, err := f.GetArtist(ctx, link.ArtistID)
+			if err != nil {
+				return nil, 0, err
+			}
+			item.Artists = append(item.Artists, artist)
+		}
+		for _, link := range f.albumTracks {
+			if link.AlbumID == album.ID {
+				item.TrackCount++
+			}
+		}
+		result = append(result, item)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		a, b := result[i], result[j]
+		if a.ReleaseYear == nil && b.ReleaseYear != nil {
+			return false
+		}
+		if a.ReleaseYear != nil && b.ReleaseYear == nil {
+			return true
+		}
+		if a.ReleaseYear != nil && b.ReleaseYear != nil && *a.ReleaseYear != *b.ReleaseYear {
+			return *a.ReleaseYear > *b.ReleaseYear
+		}
+		return a.ID.String() < b.ID.String()
+	})
+	total := len(result)
+	start := min(offset, total)
+	end := start + min(limit, total-start)
+	return result[start:end], total, nil
+}

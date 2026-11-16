@@ -1,6 +1,10 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type ArtistRef struct {
 	ID          uuid.UUID `json:"id"`
@@ -23,3 +27,19 @@ const (
 	ArtistRoleProducer ArtistRole = "producer"
 	ArtistRoleComposer ArtistRole = "composer"
 )
+
+// Artist is the detail response, with collections included only on request.
+type Artist struct {
+	ArtistRef
+	Image      *Image                    `json:"image"`
+	Stats      ArtistStats               `json:"stats"`
+	Albums     *ListAlbumsResponse       `json:"albums,omitempty"`
+	Tracks     *ListArtistTracksResponse `json:"tracks,omitempty"`
+	CreateTime time.Time                 `json:"create_time"`
+	UpdateTime time.Time                 `json:"update_time"`
+}
+
+type ArtistStats struct {
+	AlbumCount int `json:"album_count"`
+	TrackCount int `json:"track_count"`
+}

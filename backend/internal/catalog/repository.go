@@ -24,6 +24,10 @@ type TrackRepository interface {
 }
 
 type ArtistRepository interface {
+	GetArtistStats(ctx context.Context, id uuid.UUID) (ArtistStats, error)
+	ListArtistAlbums(
+		ctx context.Context, id uuid.UUID, limit, offset int,
+	) ([]AlbumOverview, int, error)
 	AddArtist(ctx context.Context, a *Artist) error
 	GetArtist(ctx context.Context, id uuid.UUID) (Artist, error)
 	FindArtistByName(ctx context.Context, name string) (Artist, error)
