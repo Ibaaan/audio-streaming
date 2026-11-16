@@ -232,6 +232,72 @@ paths:
         '500':
           $ref: '#/components/responses/Internal'
 
+  /v1/tracks:
+    post:
+      tags: [Tracks]
+      summary: Загрузка и импорт трека
+      description: |
+        Принимает исходный аудиофайл в multipart-поле `file`. Импорт выполняется
+        синхронно: извлекаются метаданные и качество, файл сохраняется в S3,
+        затем сохраняется запись каталога. Ответ `201` возвращается после
+        успешного сохранения трека. Общий размер тела запроса — не более 1 ГиБ.
+        В метаданных файла должны присутствовать название и артист;
+        для файла с альбомом также требуется номер трека.
+      operationId: uploadTrack
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Исходный аудиофайл с метаданными
+      responses:
+        '201':
+          description: Трек создан и доступен по URL из заголовка Location
+          headers:
+            Location:
+              required: true
+              description: Относительный URL созданного трека
+              schema:
+                type: string
+                format: uri-reference
+              example: /v1/tracks/550e8400-e29b-41d4-a716-446655440000
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadTrackResponse'
+        '400':
+          $ref: '#/components/responses/InvalidArgument'
+        '409':
+          description: Трек с таким названием и артистом уже существует
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: 409
+                  message: Track already exists
+                  reason: ALREADY_EXISTS
+        '413':
+          description: Тело запроса превышает 1 ГиБ
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: 413
+                  message: file is larger than 1 GiB
+                  reason: INVALID_PARAMETER
+        '500':
+          $ref: '#/components/responses/Internal'
+
   /v1/tracks/{track}:
     get:
       tags: [Tracks]
@@ -422,6 +488,7 @@ components:
               enum:
                 - INVALID_PARAMETER
                 - RESOURCE_NOT_FOUND
+                - ALREADY_EXISTS
                 - TRACK_NOT_READY
                 - INTERNAL_ERROR
             metadata:
@@ -850,6 +917,17 @@ components:
           description: True peak после обработки, dBTP
           maximum: 0
           example: -1.0
+
+    UploadTrackResponse:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: UUID созданного трека
+      example:
+        id: 550e8400-e29b-41d4-a716-446655440000
 
     Track:
       type: object

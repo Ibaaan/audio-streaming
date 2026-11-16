@@ -47,23 +47,23 @@ func New(d Deps, tmpDir string) (*Pipeline, error) {
 // Run imports the audio file at path: it uploads the file unchanged to
 // audio/<id><ext> and then saves the track record. The record is saved
 // last, so a saved track always has its audio stored. Encoding and
-// verification are not done yet.
-func (p *Pipeline) Run(ctx context.Context, path string) error {
+// verification are not done yet. The ID is returned only after the record is saved.
+func (p *Pipeline) Run(ctx context.Context, path string) (uuid.UUID, error) {
 	info, err := p.d.Decoder.Probe(ctx, path)
 	if err != nil {
-		return fmt.Errorf("%w: probing: %w", ErrInvalidSource, err)
+		return uuid.Nil, fmt.Errorf("%w: probing: %w", ErrInvalidSource, err)
 	}
 	tags, cover, err := p.d.Meta.Extract(ctx, path)
 	if err != nil {
-		return fmt.Errorf("reading metadata: %w", err)
+		return uuid.Nil, fmt.Errorf("reading metadata: %w", err)
 	}
 	id, err := uuid.NewV7()
 	if err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	if err := p.uploadAudio(ctx, id, path); err != nil {
-		return err
+		return uuid.Nil, err
 	}
 
 	rec := audio.Record{
@@ -74,9 +74,9 @@ func (p *Pipeline) Run(ctx context.Context, path string) error {
 		Cover:      cover,
 	}
 	if err := p.d.Records.Save(ctx, rec); err != nil {
-		return fmt.Errorf("saving record: %w", err)
+		return uuid.Nil, fmt.Errorf("saving record: %w", err)
 	}
-	return nil
+	return id, nil
 }
 
 func (p *Pipeline) uploadAudio(ctx context.Context, id uuid.UUID, path string) error {

@@ -7,6 +7,10 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/google/uuid"
+
+	"audio-streaming/internal/dto"
+
 	"audio-streaming/internal/pipeline"
 	"audio-streaming/internal/service"
 )
@@ -14,7 +18,7 @@ import (
 const maxUploadSize = 1 << 30
 
 type trackImporter interface {
-	Run(ctx context.Context, path string) error
+	Run(ctx context.Context, path string) (uuid.UUID, error)
 }
 
 // UploadTrack takes a multipart form with the audio in its "file" field,
@@ -34,10 +38,11 @@ func UploadTrack(p trackImporter, tmpDir string) http.HandlerFunc {
 		}
 		defer func() { _ = os.Remove(tmp) }()
 
-		err = p.Run(r.Context(), tmp)
+		id, err := p.Run(r.Context(), tmp)
 		switch {
 		case err == nil:
-			w.WriteHeader(http.StatusNoContent)
+			w.Header().Set("Location", "/v1/tracks/"+id.String())
+			writeJSON(w, http.StatusCreated, dto.UploadTrackResponse{ID: id})
 		case errors.Is(err, pipeline.ErrInvalidSource):
 			slog.Info("rejected upload", "error", err)
 			writeError(w, http.StatusBadRequest, "INVALID_PARAMETER", "not a readable audio file")
