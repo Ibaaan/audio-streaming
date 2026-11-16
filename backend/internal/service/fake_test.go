@@ -185,3 +185,53 @@ func (f *fakeRepo) GetAlbumByTrackId(
 	})
 	return result, nil
 }
+
+func (f *fakeRepo) ListArtistTracks(
+	ctx context.Context, id uuid.UUID, limit, offset int,
+) ([]catalog.ArtistTrack, int, error) {
+	result := []catalog.ArtistTrack{}
+	for _, credit := range f.trackArtists {
+		if credit.ArtistID != id {
+			continue
+		}
+		track, err := f.GetTrack(ctx, credit.TrackID)
+		if err != nil {
+			return nil, 0, err
+		}
+		result = append(result, catalog.ArtistTrack{Track: track, Role: credit.Role})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		a, _ := f.GetAlbumByTrackId(ctx, result[i].ID)
+		b, _ := f.GetAlbumByTrackId(ctx, result[j].ID)
+		var ay, by, ad, bd, at, bt int16
+		if len(a) > 0 {
+			ad, at = a[0].DiscNo, a[0].TrackNo
+			if a[0].ReleaseYear != nil {
+				ay = *a[0].ReleaseYear
+			}
+		}
+		if len(b) > 0 {
+			bd, bt = b[0].DiscNo, b[0].TrackNo
+			if b[0].ReleaseYear != nil {
+				by = *b[0].ReleaseYear
+			}
+		}
+		if ay != by {
+			return ay > by
+		}
+		if (ad == 0) != (bd == 0) {
+			return ad != 0
+		}
+		if ad != bd {
+			return ad < bd
+		}
+		if at != bt {
+			return at < bt
+		}
+		return result[i].ID.String() < result[j].ID.String()
+	})
+	total := len(result)
+	start := min(offset, total)
+	end := start + min(limit, total-start)
+	return result[start:end], total, nil
+}

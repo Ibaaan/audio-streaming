@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -75,4 +76,19 @@ func receiveFile(r *http.Request, dir string) (string, error) {
 		}
 		return f.Name(), nil
 	}
+}
+
+func paginationValue(r *http.Request, name string, fallback int) (int, error) {
+	values, ok := r.URL.Query()[name]
+	if !ok {
+		return fallback, nil
+	}
+	if len(values) != 1 {
+		return 0, errors.New(name + " must be specified once")
+	}
+	value, err := strconv.Atoi(values[0])
+	if err != nil || value < 0 {
+		return 0, errors.New(name + " must be a non-negative integer")
+	}
+	return value, nil
 }

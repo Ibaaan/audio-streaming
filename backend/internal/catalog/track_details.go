@@ -12,3 +12,9 @@ type TrackAlbumAppearance struct {
 	DiscNo  int16 `db:"disc_no"`
 	TrackNo int16 `db:"track_no"`
 }
+
+// ArtistTrack is a track credited to the queried artist, including their role.
+type ArtistTrack struct {
+	Track
+	Role *string `db:"role"`
+}

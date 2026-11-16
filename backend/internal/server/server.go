@@ -56,11 +56,12 @@ func Run(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServer(http.Dir("../static")))
+	mux.HandleFunc("GET /v1/artists/{artist}/tracks", handlers.ListArtistTracks(lib))
 	mux.HandleFunc("GET /v1/tracks", handlers.ListTracks(lib))
 	mux.HandleFunc("POST /v1/tracks", handlers.UploadTrack(p, tmpDir))
 	mux.HandleFunc("GET /v1/tracks/{track}/stream",
 		handlers.StreamTrack(lib, store))
-	mux.HandleFunc("Get /v1/tracks/{trackId}",
+	mux.HandleFunc("GET /v1/tracks/{trackId}",
 		handlers.GetTrack(lib))
 
 	addr := ":8080"

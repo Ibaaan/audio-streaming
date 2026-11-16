@@ -13,6 +13,9 @@ import (
 // *postgres.Repository satisfies all of them.
 
 type TrackRepository interface {
+	ListArtistTracks(
+		ctx context.Context, artistID uuid.UUID, limit, offset int,
+	) ([]ArtistTrack, int, error)
 	AddTrack(ctx context.Context, t *Track) error
 	GetTrack(ctx context.Context, id uuid.UUID) (Track, error)
 	FindTrack(ctx context.Context, title string, artistID uuid.UUID) (Track, error)
