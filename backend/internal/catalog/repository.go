@@ -24,6 +24,7 @@ type ArtistRepository interface {
 	AddArtist(ctx context.Context, a *Artist) error
 	GetArtist(ctx context.Context, id uuid.UUID) (Artist, error)
 	FindArtistByName(ctx context.Context, name string) (Artist, error)
+	GetArtistByTrackId(ctx context.Context, id uuid.UUID) ([]TrackArtistCredit, error)
 }
 
 type AlbumRepository interface {
@@ -32,6 +33,7 @@ type AlbumRepository interface {
 	FindAlbum(ctx context.Context, title string, artistID uuid.UUID) (Album, error)
 	AddAlbumArtist(ctx context.Context, aa AlbumArtist) error
 	AddAlbumTrack(ctx context.Context, at AlbumTrack) error
+	GetAlbumByTrackId(ctx context.Context, id uuid.UUID) ([]TrackAlbumAppearance, error)
 }
 
 type ImageRepository interface {

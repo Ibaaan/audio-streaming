@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"audio-streaming/internal/catalog"
 )
@@ -37,4 +38,19 @@ LIMIT 1`
 // FindArtistByName matches name case-insensitively.
 func (r *Repository) FindArtistByName(ctx context.Context, name string) (catalog.Artist, error) {
 	return queryOne[catalog.Artist](ctx, r.dbtx, selectArtistByNameQuery, name)
+}
+
+// GetArtistByTrackId returns all credits in their display order.
+func (r *Repository) GetArtistByTrackId(
+	ctx context.Context, id uuid.UUID,
+) ([]catalog.TrackArtistCredit, error) {
+	rows, err := r.dbtx.Query(ctx, `
+SELECT a.*, ta.role FROM artists a
+JOIN track_artists ta ON ta.artist_id = a.id
+WHERE ta.track_id = $1
+ORDER BY ta.position, a.id`, id)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[catalog.TrackArtistCredit])
 }

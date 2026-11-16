@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 
 	"audio-streaming/internal/catalog"
 )
@@ -62,4 +63,21 @@ func (r *Repository) AddAlbumTrack(ctx context.Context, at catalog.AlbumTrack) e
 		at.AlbumID, at.TrackID, at.Quality,
 		at.DiscNo, at.TrackNo)
 	return err
+}
+
+const getAlbumByTrackIdQuery = `
+SELECT a.*, at.disc_no, at.track_no FROM albums a
+JOIN album_tracks at ON at.album_id = a.id
+WHERE at.track_id = $1
+ORDER BY a.created_at, a.id`
+
+// GetAlbumByTrackId returns every album appearance, oldest album first.
+func (r *Repository) GetAlbumByTrackId(
+	ctx context.Context, id uuid.UUID,
+) ([]catalog.TrackAlbumAppearance, error) {
+	rows, err := r.dbtx.Query(ctx, getAlbumByTrackIdQuery, id)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByName[catalog.TrackAlbumAppearance])
 }

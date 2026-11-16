@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -139,4 +140,48 @@ func (f *fakeRepo) FindImageByPath(ctx context.Context, storagePath string) (cat
 	return first(f.images, func(i catalog.Image) bool {
 		return i.StoragePath == storagePath
 	})
+}
+
+func (f *fakeRepo) GetArtistByTrackId(
+	ctx context.Context, id uuid.UUID,
+) ([]catalog.TrackArtistCredit, error) {
+	credits := append([]catalog.TrackArtist{}, f.trackArtists...)
+	sort.Slice(credits, func(i, j int) bool { return credits[i].Position < credits[j].Position })
+	result := []catalog.TrackArtistCredit{}
+	for _, credit := range credits {
+		if credit.TrackID != id {
+			continue
+		}
+		artist, err := f.GetArtist(ctx, credit.ArtistID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, catalog.TrackArtistCredit{Artist: artist, Role: credit.Role})
+	}
+	return result, nil
+}
+
+func (f *fakeRepo) GetAlbumByTrackId(
+	ctx context.Context, id uuid.UUID,
+) ([]catalog.TrackAlbumAppearance, error) {
+	result := []catalog.TrackAlbumAppearance{}
+	for _, link := range f.albumTracks {
+		if link.TrackID != id {
+			continue
+		}
+		album, err := f.GetAlbum(ctx, link.AlbumID)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, catalog.TrackAlbumAppearance{
+			Album: album, DiscNo: link.DiscNo, TrackNo: link.TrackNo,
+		})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].CreatedAt.Equal(result[j].CreatedAt) {
+			return result[i].ID.String() < result[j].ID.String()
+		}
+		return result[i].CreatedAt.Before(result[j].CreatedAt)
+	})
+	return result, nil
 }
