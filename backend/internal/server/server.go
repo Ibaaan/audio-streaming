@@ -56,6 +56,7 @@ func Run(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServer(http.Dir("../static")))
+	mux.HandleFunc("GET /v1/search", handlers.Search(lib))
 	mux.HandleFunc("GET /v1/albums/{album}", handlers.GetAlbum(lib))
 	mux.HandleFunc("GET /v1/artists/{artist}", handlers.GetArtist(lib))
 	mux.HandleFunc("GET /v1/artists/{artist}/albums", handlers.ListArtistAlbums(lib))

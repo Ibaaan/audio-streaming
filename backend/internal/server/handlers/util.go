@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"audio-streaming/internal/dto"
 )
 
 // apiError is the error body from docs/openapi.yaml.
@@ -121,4 +123,32 @@ func albumInclude(r *http.Request) ([]string, error) {
 		return nil, errors.New("include must contain only tracks once")
 	}
 	return []string{"tracks"}, nil
+}
+
+func searchRequest(r *http.Request) (dto.SearchRequest, error) {
+	req := dto.SearchRequest{}
+	query := r.URL.Query()
+	values := query["query"]
+	if len(values) != 1 {
+		return req, errors.New("query must be specified once")
+	}
+	req.Query = values[0]
+	if values, present := query["types"]; present {
+		if len(values) != 1 {
+			return req, errors.New("types must be specified once")
+		}
+		for _, kind := range strings.Split(values[0], ",") {
+			req.Types = append(req.Types, dto.SearchType(kind))
+		}
+	}
+	size, err := paginationValue(r, "page_size", 20)
+	if err != nil {
+		return req, err
+	}
+	offset, err := paginationValue(r, "offset", 0)
+	if err != nil {
+		return req, err
+	}
+	req.PageSize, req.Offset = size, offset
+	return req, nil
 }

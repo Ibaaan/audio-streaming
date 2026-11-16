@@ -50,11 +50,20 @@ type ImageRepository interface {
 	FindImageByPath(ctx context.Context, storagePath string) (Image, error)
 }
 
+// SearchRepository performs literal, case-insensitive substring searches.
+// Results are ordered by name/title, then ID, for stable offset pagination.
+type SearchRepository interface {
+	SearchArtists(ctx context.Context, query string, limit, offset int) ([]Artist, int, error)
+	SearchAlbums(ctx context.Context, query string, limit, offset int) ([]Album, int, error)
+	SearchTracks(ctx context.Context, query string, limit, offset int) ([]Track, int, error)
+}
+
 // Repository is every repository together, for code that touches the whole
 // catalog, such as importing a track. It lives here rather than with its
 // users so that implementations can name it in WithinTx's callback
 // without importing them.
 type Repository interface {
+	SearchRepository
 	TrackRepository
 	ArtistRepository
 	AlbumRepository
