@@ -11,6 +11,7 @@ Person(uploader, "Uploader", "Adds tracks to the library")
 
 Boundary(api, "API", "") {
   Component(catalogHandlers, "Catalog Handlers", "", "Browse artists, albums and tracks; search; get playback URLs")
+  Component(library, "Library", "", "Retrieves catalog data, builds responses and reads track quality")
 
   Boundary(upload, "Track Upload", "") {
     Component(uploadHandlers, "Upload Handlers", "", "HTTP endpoints for adding tracks")
@@ -38,7 +39,8 @@ System_Ext(metaApi, "External Metadata Source", "e.g. MusicBrainz / Discogs API"
 user --> catalogHandlers : HTTPS / JSON
 uploader --> uploadHandlers : HTTPS / file upload
 
-catalogHandlers ..> repo : Read / search
+catalogHandlers ..> library : Catalog / search / track quality
+library ..> repo : Read / search
 catalogHandlers ..> store : Playback URL
 uploadHandlers ..> importService
 importService ..> uploadService
