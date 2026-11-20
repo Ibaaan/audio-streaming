@@ -1,0 +1,86 @@
+@startuml
+!pragma layout smetana
+!include <C4/C4_Component>
+
+LAYOUT_TOP_DOWN()
+
+title Home Audio Streaming - API Components (C4 Level 3)
+
+Person(user, "User", "Browses and plays music from a client app")
+Person(uploader, "Uploader", "Adds tracks to the library")
+
+Boundary(api, "API", "") {
+  Component(catalogHandlers, "Catalog Handlers", "", "Browse artists, albums and tracks; search; get playback URLs")
+  Component(library, "Library", "", "Retrieves catalog data, builds responses and reads track quality")
+
+  Boundary(upload, "Track Upload", "") {
+    Component(uploadHandlers, "Upload Handlers", "", "HTTP endpoints for adding tracks")
+    Component(uploadService, "Upload Service", "", "Receives audio files and saves them in S3")
+    Component(metadataService, "Metadata Service", "", "Extracts and enriches track metadata")
+    Component(importService, "Import Service", "", "Coordinates upload and metadata processing; creates catalog records")
+  }
+
+  Component(repo, "Repository", "", "Catalog data access: read, search and create")
+  Component(store, "Store", "", "Object storage: read, write and create playback URLs")
+  Component(tags, "Tags Extractor", "", "Reads embedded tags and audio properties")
+  Component(metadataProvider, "Metadata Provider", "", "Looks up additional metadata from an online source")
+
+  Component(postgresAdapter, "PostgreSQL Adapter", "", "Connection + SQL queries")
+  Component(s3Adapter, "S3 Adapter", "", "S3 client: objects, presigned URLs")
+  Component(ffprobeAdapter, "FFprobe Adapter", "", "Reads embedded tags and stream info from the audio file")
+  Component(externalAdapter, "External Metadata Adapter", "", "Looks up / enriches track metadata from an online source")
+}
+
+ContainerDb(db, "Database (PostgreSQL)", "", "Artists, albums, track metadata, S3 object keys")
+ContainerDb(s3, "Audio Storage (S3)", "", "Audio files")
+System_Ext(ffprobe, "ffprobe", "FFmpeg CLI tool")
+System_Ext(metaApi, "External Metadata Source", "e.g. MusicBrainz / Discogs API")
+
+user --> catalogHandlers : HTTPS / JSON
+uploader --> uploadHandlers : HTTPS / file upload
+
+catalogHandlers ..> library : Catalog / search / track quality
+library ..> repo : Read / search
+catalogHandlers ..> store : Playback URL
+uploadHandlers ..> importService
+importService ..> uploadService
+importService ..> metadataService
+importService ..> repo : Create records
+uploadService ..> store : Save file
+metadataService ..> tags
+metadataService ..> metadataProvider
+
+repo <|.up. postgresAdapter
+store <|.up. s3Adapter
+tags <|.up. ffprobeAdapter
+metadataProvider <|.up. externalAdapter
+
+postgresAdapter --> db : SQL
+s3Adapter --> s3 : S3 API
+ffprobeAdapter --> ffprobe : CLI / JSON
+externalAdapter --> metaApi : HTTPS / JSON
+user --> s3 : HTTPS audio playback
+
+repo -[hidden]down- postgresAdapter
+store -[hidden]down- s3Adapter
+tags -[hidden]down- ffprobeAdapter
+metadataProvider -[hidden]down- externalAdapter
+
+Lay_R(catalogHandlers, uploadHandlers)
+Lay_R(repo, store)
+Lay_R(store, tags)
+Lay_R(tags, metadataProvider)
+Lay_R(postgresAdapter, s3Adapter)
+Lay_R(s3Adapter, ffprobeAdapter)
+Lay_R(ffprobeAdapter, externalAdapter)
+Lay_R(db, s3)
+Lay_R(s3, ffprobe)
+Lay_R(ffprobe, metaApi)
+
+legend bottom
+  |= Symbol |= Meaning |
+  | ..> | Dependency |
+  | ..\|> | Interface realization |
+  | --> | Interaction |
+endlegend
+@enduml
