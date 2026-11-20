@@ -1,0 +1,69 @@
+@startuml
+!pragma layout smetana
+!include <C4/C4_Component>
+
+LAYOUT_TOP_DOWN()
+
+title Home Audio Streaming - API Components (C4 Level 3)
+
+Person(user, "Listener", "Browses and plays music from a client app")
+
+Boundary(api, "API", "") {
+  Component(handlers, "HTTP Handlers", "", "Endpoints: search tracks; artist tracks / albums / profile; album; track; stream")
+  Component(service, "Service", "", "Retrieves catalog data, builds stream responses; wires Repository, Store and Tags Extractor together")
+
+  Component(repo, "Repository", "", "Data access contract: artists, albums, tracks, search")
+  Component(store, "Store", "", "Object storage contract: get object, create object URL")
+  Component(tags, "Tags Extractor", "", "Metadata contract: title, artist, album, duration, codec...")
+
+  Component(postgresAdapter, "PostgreSQL Adapter", "", "Connection + SQL queries")
+  Component(s3Adapter, "S3 Adapter", "", "S3 client: objects, presigned URLs")
+  Component(ffprobeAdapter, "FFprobe Adapter", "", "Reads embedded tags and stream info from the audio file")
+  Component(externalAdapter, "External Metadata Adapter", "", "Looks up / enriches track metadata from an online source")
+}
+
+ContainerDb(db, "Database (PostgreSQL)", "", "Artists, albums, track metadata, S3 object keys")
+ContainerDb(s3, "Audio Storage (S3)", "", "Audio files")
+System_Ext(ffprobe, "ffprobe", "FFmpeg CLI tool")
+System_Ext(metaApi, "External Metadata Source", "e.g. MusicBrainz / Discogs API")
+
+user --> handlers : HTTPS / JSON
+handlers ..> service
+
+service ..> repo
+service ..> store
+service ..> tags
+
+repo <|.up. postgresAdapter
+store <|.up. s3Adapter
+tags <|.up. ffprobeAdapter
+tags <|.up. externalAdapter
+
+postgresAdapter --> db : SQL
+s3Adapter --> s3 : S3 API
+ffprobeAdapter --> ffprobe : CLI / JSON
+externalAdapter --> metaApi : HTTPS / JSON
+
+user --> s3 : HTTPS
+
+repo -[hidden]down- postgresAdapter
+store -[hidden]down- s3Adapter
+tags -[hidden]down- ffprobeAdapter
+tags -[hidden]down- externalAdapter
+
+Lay_R(store, repo)
+Lay_R(repo, tags)
+Lay_R(s3Adapter, postgresAdapter)
+Lay_R(postgresAdapter, ffprobeAdapter)
+Lay_R(ffprobeAdapter, externalAdapter)
+Lay_R(s3, db)
+Lay_R(db, ffprobe)
+Lay_R(ffprobe, metaApi)
+
+legend bottom
+  |= Symbol |= Meaning |
+  | ..> | Dependency |
+  | ..\|> | Interface realization |
+  | --> | Interaction |
+endlegend
+@enduml
